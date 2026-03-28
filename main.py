@@ -42,35 +42,13 @@ class FinanceManagerCLI:
     
     def __init__(self):
         """Initialize the CLI application."""
-        self.select_storage_backend()
+        # Set SQLite as default backend
+        StorageFactory.set_storage_type(StorageType.SQLITE)
+        
         self.transaction_service = TransactionService()
         self.report_service = ReportService(self.transaction_service)
         self.budget_service = BudgetService(self.transaction_service)
         logger.info("Personal Finance Manager initialized")
-    
-    def select_storage_backend(self) -> None:
-        """Allow user to select storage backend."""
-        print("\n" + "=" * 50)
-        print("PILIH BACKEND DATABASE")
-        print("=" * 50)
-        print("1. SQLite (Recommended - Faster, Built-in)")
-        print("2. CSV (Simple - Text-based)")
-        print("=" * 50)
-        
-        while True:
-            choice = input("Pilih opsi (1/2): ").strip()
-            if choice == "1":
-                StorageFactory.set_storage_type(StorageType.SQLITE)
-                print("\n✅ Backend: SQLite dipilih")
-                logger.info("SQLite backend selected")
-                break
-            elif choice == "2":
-                StorageFactory.set_storage_type(StorageType.CSV)
-                print("\n✅ Backend: CSV dipilih")
-                logger.info("CSV backend selected")
-                break
-            else:
-                print("❌ Opsi tidak valid. Pilih 1 atau 2.")
     
     def clear_screen(self) -> None:
         """Clear console screen."""
@@ -89,7 +67,8 @@ class FinanceManagerCLI:
         print("4. Laporan Bulanan")
         print("5. Grafik Laporan")
         print("6. Kelola Anggaran")
-        print("7. Keluar")
+        print("7. Pengaturan")
+        print("8. Keluar")
         print("=" * 50)
     
     def input_transaction(self) -> None:
@@ -202,6 +181,85 @@ class FinanceManagerCLI:
                 print(f"\n❌ Kesalahan saat membuka grafik: {e}")
                 logger.exception("Chart error")
     
+    def settings_menu(self) -> None:
+        """Display settings menu."""
+        while True:
+            current_backend = StorageFactory.get_current_storage_type()
+            print("\n--- PENGATURAN ---")
+            print(f"Backend Database Saat Ini: {current_backend.upper()}")
+            print("1. Ganti Backend Database")
+            print("2. Informasi Database")
+            print("3. Kembali ke Menu Utama")
+            
+            choice = input("Pilih opsi: ").strip()
+            
+            try:
+                if choice == "1":
+                    self.switch_backend()
+                elif choice == "2":
+                    self.show_database_info()
+                elif choice == "3":
+                    break
+                else:
+                    print("❌ Opsi tidak valid.")
+            except Exception as e:
+                print(f"\n❌ Kesalahan: {e}")
+                logger.exception("Settings error")
+    
+    def switch_backend(self) -> None:
+        """Switch database backend."""
+        print("\n--- GANTI BACKEND DATABASE ---")
+        current_backend = StorageFactory.get_current_storage_type()
+        print(f"Backend saat ini: {current_backend.upper()}")
+        print("1. SQLite (Recommended - Faster, Built-in)")
+        print("2. CSV (Simple - Text-based)")
+        
+        choice = input("Pilih opsi (1/2): ").strip()
+        
+        if choice == "1":
+            StorageFactory.set_storage_type(StorageType.SQLITE)
+            print("\n✅ Backend diubah ke: SQLite")
+            print("⚠️  Silakan restart aplikasi untuk menerapkan perubahan.")
+            logger.info("Backend switched to SQLite (restart needed)")
+        elif choice == "2":
+            StorageFactory.set_storage_type(StorageType.CSV)
+            print("\n✅ Backend diubah ke: CSV")
+            print("⚠️  Silakan restart aplikasi untuk menerapkan perubahan.")
+            logger.info("Backend switched to CSV (restart needed)")
+        else:
+            print("❌ Opsi tidak valid.")
+    
+    def show_database_info(self) -> None:
+        """Display database information."""
+        backend = StorageFactory.get_current_storage_type()
+        
+        print("\n--- INFORMASI DATABASE ---")
+        print(f"Backend: {backend.upper()}")
+        
+        if backend == "sqlite":
+            try:
+                from storage.sqlite_storage import SQLiteStorage
+                count = SQLiteStorage.get_transaction_count()
+                print(f"File: finance_data.db")
+                print(f"Total Transaksi: {count}")
+                print(f"Budgets: {len(self.budget_service.budgets)}")
+                print("\nKeuntungan SQLite:")
+                print("  • 5x lebih cepat dari CSV")
+                print("  • ACID compliant")
+                print("  • Efisien untuk dataset besar")
+                print("  • Backup mudah (copy file)")
+            except Exception as e:
+                print(f"❌ Error: {e}")
+        else:
+            print(f"File: finance_data.csv, budget.csv")
+            print(f"Total Transaksi: {len(self.transaction_service.transactions)}")
+            print(f"Budgets: {len(self.budget_service.budgets)}")
+            print("\nKeuntungan CSV:")
+            print("  • Human-readable")
+            print("  • Excel compatible")
+            print("  • Mudah di-export")
+    
+    
     
     def manage_budget_menu(self) -> None:
         """Handle budget management."""
@@ -271,7 +329,8 @@ class FinanceManagerCLI:
     def run(self) -> None:
         """Main CLI loop."""
         print("\n🚀 Manajer Keuangan Pribadi Dimulai")
-        logger.info("CLI started")
+        print("📊 Backend: SQLite (Default)")
+        logger.info("CLI started with SQLite backend")
         
         while True:
             self.display_menu()
@@ -291,6 +350,8 @@ class FinanceManagerCLI:
                 elif choice == "6":
                     self.manage_budget_menu()
                 elif choice == "7":
+                    self.settings_menu()
+                elif choice == "8":
                     print("\n✅ Sampai jumpa!")
                     logger.info("CLI closed")
                     break
