@@ -1,0 +1,14 @@
+venv/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.log
+.env
+.idea/
+.vscode/
+dist/
+build/
+*.exe
+.ipc/
+.git/
