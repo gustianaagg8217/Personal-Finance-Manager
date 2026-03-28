@@ -135,23 +135,26 @@ class FinanceBot:
         welcome_text = (
             f"Halo {user.first_name}! 👋\n\n"
             "Selamat datang di Manajer Keuangan Pribadi Bot!\n\n"
-            "Gunakan perintah berikut:\n"
-            "/add_transaction - Tambah transaksi\n"
-            "/summary - Lihat ringkasan\n"
-            "/category_report - Laporan kategori\n"
-            "/monthly_report - Laporan bulanan\n"
-            "/set_budget - Atur anggaran\n"
-            "/budget_status - Status anggaran\n"
-            "/help - Bantuan\n\n"
-            "Ketik /help untuk informasi lebih lanjut."
+            "🏠 MENU UTAMA (12 Pilihan):\n\n"
+            "1️⃣ /add_transaction - Tambah transaksi\n"
+            "2️⃣ /summary - Lihat ringkasan\n"
+            "3️⃣ /category_report - Laporan kategori\n"
+            "4️⃣ /monthly_report - Laporan bulanan\n"
+            "5️⃣ /charts - Grafik laporan\n"
+            "6️⃣ /set_budget - Atur anggaran\n"
+            "7️⃣ /transactions - Kelola transaksi\n"
+            "8️⃣ /analytics - Analitik & kesehatan\n"
+            "9️⃣ /recurring - Transaksi berulang\n"
+            "🔟 /export - Ekspor data\n"
+            "1️⃣1️⃣ /settings - Pengaturan\n"
+            "1️⃣2️⃣ /help - Bantuan"
         )
         await update.message.reply_text(welcome_text)
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Help command handler."""
         help_text = (
-            "📚 BANTUAN\n\n"
-            "Perintah Tersedia:\n\n"
+            "📚 BANTUAN - 12 MENU UTAMA\n\n"
             "💰 /add_transaction\n"
             "   Menambahkan transaksi pendapatan/pengeluaran\n\n"
             "📊 /summary\n"
@@ -160,16 +163,28 @@ class FinanceBot:
             "   Laporan pengeluaran berdasarkan kategori\n\n"
             "📅 /monthly_report\n"
             "   Laporan bulanan\n\n"
+            "📊 /charts\n"
+            "   Grafik laporan (tersedia di CLI)\n\n"
             "💳 /set_budget\n"
             "   Mengatur anggaran bulanan untuk kategori\n\n"
             "✅ /budget_status\n"
             "   Melihat status anggaran bulan ini\n\n"
+            "🔍 /transactions\n"
+            "   Kelola transaksi (edit/hapus/cari di CLI)\n\n"
+            "💡 /analytics\n"
+            "   Analitik & kesehatan keuangan\n\n"
+            "📅 /recurring\n"
+            "   Kelola transaksi berulang\n\n"
+            "📥 /export\n"
+            "   Ekspor data ke CSV/TXT\n\n"
+            "⚙️ /settings\n"
+            "   Pengaturan aplikasi\n\n"
             "❌ /cancel\n"
             "   Membatalkan operasi\n\n"
             "📌 Tips:\n"
             "• Database sama dengan CLI (SQLite)\n"
             "• Update real-time di kedua platform\n"
-            "• Ketik 'batal' untuk membatalkan input"
+            "• Fitur lengkap tersedia di aplikasi CLI"
         )
         await update.message.reply_text(help_text)
     
@@ -863,6 +878,205 @@ class FinanceBot:
         
         return CATEGORY
     
+    async def view_charts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show chart options (text version for Telegram)."""
+        await update.message.chat.send_action(ChatAction.TYPING)
+        
+        text = (
+            "📊 GRAFIK LAPORAN\n\n"
+            "Fitur grafik tersedia di aplikasi CLI.\n"
+            "Di Telegram, gunakan perintah laporan bernomina untuk info detail:\n\n"
+            "📅 /monthly_report - Laporan bulanan\n"
+            "🏷️ /category_report - Pengeluaran per kategori\n"
+            "📊 /summary - Ringkasan keseluruhan"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    
+    async def manage_transactions_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show transaction management options."""
+        await update.message.chat.send_action(ChatAction.TYPING)
+        
+        text = (
+            "💳 KELOLA TRANSAKSI\n\n"
+            "Opsi manajemen transaksi:\n\n"
+            "📋 Lihat Transaksi\n"
+            "✏️ Edit Transaksi (via CLI)\n"
+            "❌ Hapus Transaksi (via CLI)\n"
+            "🔍 Cari Transaksi (via CLI)\n\n"
+            "💡 Tip: Edit/hapus/cari tersedia di aplikasi CLI"
+        )
+        
+        # Show recent transactions
+        if self.transaction_service.transactions:
+            recent = self.transaction_service.transactions[-5:]
+            text += "\n\n📌 5 Transaksi Terbaru:\n"
+            for tx in reversed(recent):
+                icon = "💰" if tx.transaction_type == "income" else "💸"
+                text += f"{icon} {tx.date} - {tx.category}: Rp{format_currency(tx.amount)}\n"
+        
+        keyboard = [
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    
+    async def view_analytics_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show analytics and health information."""
+        await update.message.chat.send_action(ChatAction.TYPING)
+        
+        try:
+            from core.finance_analyzer import FinanceAnalyzer
+            
+            analyzer = FinanceAnalyzer()
+            
+            # Get financial summary
+            income = self.transaction_service.get_total_income()
+            expense = self.transaction_service.get_total_expense()
+            balance = self.transaction_service.get_balance()
+            
+            # Get recent months data
+            from collections import defaultdict
+            monthly_data = defaultdict(lambda: {"income": 0, "expense": 0})
+            
+            for transaction in self.transaction_service.transactions:
+                month = transaction.date[:7]
+                if transaction.transaction_type == "income":
+                    monthly_data[month]["income"] += transaction.amount
+                else:
+                    monthly_data[month]["expense"] += transaction.amount
+            
+            for month in monthly_data:
+                monthly_data[month]["balance"] = (
+                    monthly_data[month]["income"] - monthly_data[month]["expense"]
+                )
+            
+            # Analyze health
+            health = analyzer.analyze_financial_health(
+                total_income=income,
+                total_expense=expense,
+                monthly_budgets=self.budget_service.budgets,
+                transactions=self.transaction_service.transactions,
+                recent_months_data=dict(monthly_data)
+            )
+            
+            # Format health status
+            status_emoji = {
+                "healthy": "✅",
+                "warning": "⚠️",
+                "critical": "❌"
+            }
+            
+            text = (
+                "💡 ANALITIK & KESEHATAN KEUANGAN\n\n"
+                f"{status_emoji.get(health.status, '❓')} Status: {health.status.upper()}\n"
+                f"📈 Skor Kesehatan: {health.score}/100\n"
+                f"📊 Tren Pengeluaran: {health.spending_trend}\n"
+                f"💰 Tingkat Tabungan: {health.savings_rate:.1f}%\n\n"
+            )
+            
+            if health.insights:
+                text += "📌 Wawasan:\n"
+                for insight in health.insights[:3]:
+                    text += f"• {insight}\n"
+            
+            if health.recommendations:
+                text += "\n💡 Rekomendasi:\n"
+                for rec in health.recommendations[:3]:
+                    text += f"• {rec}\n"
+            
+        except Exception as e:
+            text = f"📊 ANALITIK & ANALYTICS\n\n❌ Error: {e}\n\nGunakan /summary untuk ringkasan dasar."
+        
+        keyboard = [
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    
+    async def manage_recurring_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show recurring transaction management."""
+        await update.message.chat.send_action(ChatAction.TYPING)
+        
+        try:
+            from services.recurring_service import RecurringService
+            
+            recurring_service = RecurringService()
+            active_recurring = recurring_service.get_active_recurring()
+            
+            text = "📅 KELOLA TRANSAKSI BERULANG\n\n"
+            
+            if active_recurring:
+                text += f"Anda memiliki {len(active_recurring)} transaksi berulang aktif:\n\n"
+                for rec in active_recurring:
+                    text += f"• {rec.name} ({rec.frequency})\n"
+                    text += f"  {rec.type.capitalize()} - {rec.category}: Rp{format_currency(rec.amount)}\n\n"
+            else:
+                text += "Belum ada transaksi berulang.\n"
+                text += "Gunakan CLI untuk menambah transaksi berulang.\n"
+            
+            text += "\n💡 Tip: Kelola transaksi berulang via aplikasi CLI"
+        
+        except Exception as e:
+            text = f"📅 KELOLA TRANSAKSI BERULANG\n\n❌ Error: {e}"
+        
+        keyboard = [
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    
+    async def export_data_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show data export options."""
+        await update.message.chat.send_action(ChatAction.TYPING)
+        
+        text = (
+            "📥 EKSPOR DATA\n\n"
+            "Opsi ekspor data:\n\n"
+            "💾 Export ke CSV - Ekspor semua transaksi\n"
+            "📄 Export ke TXT - Laporan komprehensif\n"
+            "📋 Export Bulan Ini - Transaksi bulan ini\n\n"
+            "💡 Fitur lengkap tersedia di aplikasi CLI\n"
+            "📊 File disimpan di folder aplikasi"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    
+    async def settings_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show settings menu."""
+        await update.message.chat.send_action(ChatAction.TYPING)
+        
+        text = (
+            "⚙️ PENGATURAN\n\n"
+            "Opsi pengaturan:\n\n"
+            "🔄 Ganti Backend Database\n"
+            "ℹ️ Informasi Database\n"
+            "🔐 Kelola ID Chat Telegram\n"
+            "🗑️ Hapus Data\n\n"
+            "💡 Pengaturan lengkap tersedia di aplikasi CLI\n"
+            "📱 Backend: SQLite (Recommended)"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(text, reply_markup=reply_markup)
+
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle errors from Telegram."""
         error = context.error
@@ -903,15 +1117,20 @@ class FinanceBot:
         elif query.data == "main_menu":
             # Show main menu with all commands
             menu_text = (
-                "🏠 MENU UTAMA\n\n"
-                "Pilih perintah di bawah:\n\n"
-                "💰 /add_transaction - Tambah transaksi\n"
-                "📊 /summary - Lihat ringkasan\n"
-                "🏷️ /category_report - Laporan kategori\n"
-                "📅 /monthly_report - Laporan bulanan\n"
-                "💳 /set_budget - Atur anggaran\n"
-                "✅ /budget_status - Status anggaran\n"
-                "❓ /help - Bantuan"
+                "🏠 MENU UTAMA (12 PILIHAN)\n\n"
+                "Silakan pilih perintah:\n\n"
+                "1. 💰 /add_transaction - Tambah transaksi\n"
+                "2. 📊 /summary - Lihat ringkasan\n"
+                "3. 🏷️ /category_report - Laporan kategori\n"
+                "4. 📅 /monthly_report - Laporan bulanan\n"
+                "5. 📊 /charts - Grafik laporan\n"
+                "6. 💳 /set_budget - Atur anggaran\n"
+                "7. 🔍 /transactions - Kelola transaksi\n"
+                "8. 💡 /analytics - Analitik & kesehatan\n"
+                "9. 📅 /recurring - Transaksi berulang\n"
+                "10. 📥 /export - Ekspor data\n"
+                "11. ⚙️ /settings - Pengaturan\n"
+                "12. ❓ /help - Bantuan"
             )
             
             keyboard = [
@@ -939,6 +1158,14 @@ class FinanceBot:
         app.add_handler(CommandHandler("category_report", self.category_report))
         app.add_handler(CommandHandler("monthly_report", self.monthly_report))
         app.add_handler(CommandHandler("budget_status", self.budget_status))
+        
+        # Add new command handlers (menu items 5-11)
+        app.add_handler(CommandHandler("charts", self.view_charts))
+        app.add_handler(CommandHandler("transactions", self.manage_transactions_menu))
+        app.add_handler(CommandHandler("analytics", self.view_analytics_menu))
+        app.add_handler(CommandHandler("recurring", self.manage_recurring_menu))
+        app.add_handler(CommandHandler("export", self.export_data_menu))
+        app.add_handler(CommandHandler("settings", self.settings_menu))
         
         # Add transaction conversation handler
         add_transaction_handler = ConversationHandler(
