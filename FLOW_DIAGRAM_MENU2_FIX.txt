@@ -1,0 +1,250 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                    TELEGRAM BOT MENU 2 FIX - FLOW DIAGRAM                       ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+📋 ORIGINAL PROBLEM
+═══════════════════════════════════════════════════════════════════════════════
+
+User selects Menu 2:
+    launcher.bat
+        ↓
+    2) Start Telegram Bot
+        ↓
+    [Tries: start python run_telegram_bot.py]
+        ↓
+    ❌ Bot needs TELEGRAM_BOT_TOKEN
+        ↓
+    ❌ SILENT FAILURE
+        ↓
+    ❌ User sees nothing...
+        ↓
+    😞 User confused!
+
+
+🔧 NEW SOLUTION FLOW
+═══════════════════════════════════════════════════════════════════════════════
+
+ENTRY POINT 1: Via launcher.bat (Menu System)
+────────────────────────────────────────────────────────────────────────────────
+    launcher.bat
+        ↓
+    2) Start Telegram Bot
+        ↓
+    ┌─────────────────────────────────┐
+    │ Check if token exists?          │
+    └─────────────────────────────────┘
+        ↙                           ↘
+    ❌ NO                         ✅ YES
+        ↓                           ↓
+    ┌─────────────────────┐    ┌──────────────────┐
+    │ Show Error Dialog   │    │ Launch Bot       │
+    │ Options: A/B/C      │    │ (New Window)     │
+    └─────────────────────┘    └──────────────────┘
+        ↓                           ↓
+    A) This Session?         ┌──────────────────┐
+    B) System Env?           │ Wait 3 seconds   │
+    C) Cancel?               │ Verify running   │
+        ↓                    └──────────────────┘
+    ┌─────────────────────┐           ↓
+    │ Prompt for Token    │   ┌────────────────┐
+    │ Input: ABC123...    │   │ Bot started?   │
+    └─────────────────────┘   └────────────────┘
+        ↓                           ↙      ↘
+    [Save Token]            ✅ YES      ❌ NO
+        ↓                       ↓          ↓
+    ✅ Token Set         ✅ Success  ❌ Error
+        ↓                  Message     Message
+    ▶ Launch Bot          [Commands]   [Reason]
+        ↓
+    ✅ Bot Runs!
+
+
+ENTRY POINT 2: Via launcher.py (GUI)
+────────────────────────────────────────────────────────────────────────────────
+    python launcher.py
+        ↓
+    ┌─────────────────────────────────┐
+    │ Check Environment               │
+    │ - Python version                │
+    │ - Files exist                   │
+    │ - Database                      │
+    │ - TOKEN STATUS ⚠️ or ✅         │
+    └─────────────────────────────────┘
+        ↓
+    [Display Status]
+        ↓
+    User clicks: 🤖 Setup Telegram
+        ↓
+    quick_setup_telegram.bat launches
+        ↓
+    ┌─────────────────────────────────┐
+    │ Token Already Set?              │
+    └─────────────────────────────────┘
+        ↙                           ↘
+    ❌ NO                         ✅ YES
+        ↓                           ↓
+    ┌──────────────────┐       [Ask Replace?]
+    │ Prompt Token     │           ↓
+    │ "Paste here: "   │       [Keep/Replace]
+    └──────────────────┘
+        ↓
+    [Save to System]
+        ↓
+    ✅ Saved!
+        ↓
+    [Message: Restart Terminal]
+        ↓
+    Then: ▶ Start Telegram Bot
+        ↓
+    ✅ Bot Runs!
+
+
+ENTRY POINT 3: Via quick_setup_telegram.bat (One-Click)
+────────────────────────────────────────────────────────────────────────────────
+    quick_setup_telegram.bat
+        ↓
+    [Show Setup Wizard]
+        ↓
+    ┌─────────────────────────────────┐
+    │ Token Already Set?              │
+    └─────────────────────────────────┘
+        ↙                           ↘
+    ❌ NO       [Existing]      ✅ YES
+        ↓                           ↓
+        │                   [Replace/Keep/Cancel]
+        ↓                       ↓
+    Prompt Token            [If Keep]
+    Input: ABC123...        ↓
+        ↓               [Use existing]
+    Save System         ↓
+        ↓           Setup complete
+    ✅ Done!
+        ↓
+    [Ask: Start bot now? Y/N]
+        ↓
+    Y) Start bot immediately
+    N) Manual start later
+
+
+ENTRY POINT 4: Via setup_telegram.bat (Full Wizard)
+────────────────────────────────────────────────────────────────────────────────
+    setup_telegram.bat
+        ↓
+    ┌─────────────────────────────────┐
+    │ Choose Method:                  │
+    │ 1) Automatic (+ System save)    │
+    │ 2) Manual (Session only)        │
+    │ 3) Test Token (Verify)          │
+    │ 4) Clear Token (Remove)         │
+    └─────────────────────────────────┘
+        ↓              ↓              ↓              ↓
+    Option 1       Option 2       Option 3       Option 4
+    Guided       Simple         Verify         Remove
+    Setup        Input          Token          Token
+        ↓              ↓              ↓              ↓
+    [Save Sys]   [Session]     [API Test]    [Cleanup]
+        ↓              ↓              ↓              ↓
+    Permanent    Temporary    ✅/❌ Result  No token
+        ↓              ↓              ↓              ↓
+    [Done]       [Done]       [Done]       [Done]
+
+
+📱 TELEGRAM BOT COMMANDS (After Setup)
+════════════════════════════════════════════════════════════════════════════════
+
+Once bot is running, available commands:
+
+1️⃣ /add_transaction       - Add expense/income
+2️⃣ /summary              - View overview  
+3️⃣ /category_report      - By category analysis
+4️⃣ /monthly_report       - By month analysis
+5️⃣ /charts               - View chart options
+6️⃣ /set_budget           - Set spending limit
+7️⃣ /transactions         - Manage all transactions
+8️⃣ /analytics            - Financial health score
+9️⃣ /recurring            - Repeated transactions
+🔟 /export               - Backup data
+1️⃣1️⃣ /settings           - Configuration
+1️⃣2️⃣ /help               - Show all commands
+
+
+🔑 TOKEN STATUS INDICATORS
+════════════════════════════════════════════════════════════════════════════════
+
+Status Display (launcher.py):
+    ❌ Telegram Bot              → File missing
+    ⚠️  Telegram Bot (Token needed) → File OK, token missing
+    ✅ Telegram Bot              → Ready to use
+
+Button States:
+    🚫 Disabled (grayed out)     → Can't launch (missing files/token)
+    ✅ Enabled (bright)           → Can launch
+
+
+📊 DECISION TREE - "Should I use which method?"
+════════════════════════════════════════════════════════════════════════════════
+
+    START
+      ↓
+    ┌─────────────────┐
+    │ First time?     │
+    └─────────────────┘
+      ↙           ↘
+    YES           NO
+      ↓             ↓
+    Quick?      Already have
+    Setup?      token?
+      ↙ ↘          ↙ ↘
+    Y  N        Y   N
+    ↓  ↓        ↓   ↓
+  [A] [B]      [D] [C]
+  
+  [A] = quick_setup_telegram.bat (FASTEST)
+  [B] = python launcher.py (EASIEST GUI)
+  [C] = launcher.bat option 2 (DIRECT)
+  [D] = launcher.bat option 2 (DIRECT)
+
+
+✅ SUCCESS CRITERIA
+════════════════════════════════════════════════════════════════════════════════
+
+Setup Successful if:
+    ✅ No error messages
+    ✅ Token shows in: echo %TELEGRAM_BOT_TOKEN%
+    ✅ Bot window opens
+    ✅ Bot shows "Bot started successfully"
+    ✅ Can type /help in Telegram
+    ✅ Bot responds with commands list
+
+
+❌ ERROR RECOVERY
+════════════════════════════════════════════════════════════════════════════════
+
+If bot doesn't start:
+    1. Check token: echo %TELEGRAM_BOT_TOKEN%
+       ↓
+    2. If empty:
+       Run: quick_setup_telegram.bat
+       ↓
+    3. If not empty:
+       Run: setup_telegram.bat → Select 3) Test Token
+       ↓
+    4. If test fails:
+       - Token invalid? Reset in @BotFather
+       - Network issue? Check internet
+       - Bot inactive? Activate in BotFather
+       ↓
+    5. Still not working?
+       Run manually: python run_telegram_bot.py
+       → See detailed error output
+       → Check: telegram_bot.log
+       → Read: TELEGRAM_SETUP_GUIDE.md
+
+
+═════════════════════════════════════════════════════════════════════════════════
+
+Created: 2026-03-28
+Version: 1.0
+Status: Complete ✅
+
+All flows tested and verified! 🎉
