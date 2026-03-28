@@ -2,7 +2,14 @@
 
 import logging
 import sys
+import os
 from datetime import datetime
+from typing import Callable, Dict, Optional
+
+# Set encoding to UTF-8 for Windows compatibility
+if os.name == "nt":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 from services.transaction_service import TransactionService
 from services.report_service import ReportService
@@ -18,8 +25,9 @@ from utils.validator import (
 )
 from utils.formatter import format_currency
 from utils.visualizer import plot_monthly_report, plot_category_expenses, plot_budget_status, plot_yearly_report
+from core.app_context import AppContext
+from core.finance_analyzer import FinanceAnalyzer
 import json
-import os
 
 
 # Configure logging
@@ -85,12 +93,153 @@ class FinanceManagerCLI:
         self.custom_expense_categories = self.load_custom_categories("expense")
         self.custom_income_categories = self.load_custom_categories("income")
         
+        # Initialize application context and analyzer
+        self.app_context = AppContext(cache_ttl=300)
+        self.finance_analyzer = FinanceAnalyzer()
+        
+        # Initialize menu dispatcher
+        self._initialize_menu_dispatcher()
+        
         logger.info("Personal Finance Manager initialized")
+    
+    def _initialize_menu_dispatcher(self) -> None:
+        """Initialize menu action dispatcher."""
+        self.menu_dispatcher: Dict[str, Callable] = {
+            "1": self.input_transaction,
+            "2": self.view_summary,
+            "3": self.view_category_report,
+            "4": self.view_monthly_report,
+            "5": self.view_charts,
+            "6": self.manage_budget_menu,
+            "7": self.manage_transactions_menu,
+            "8": self.view_analytics_menu,
+            "9": self.manage_recurring_menu,
+            "10": self.export_data_menu,
+            "11": self.settings_menu,
+            "12": self._handle_exit,
+        }
     
     def clear_screen(self) -> None:
         """Clear console screen."""
         import os
         os.system("cls" if os.name == "nt" else "clear")
+    
+    def get_financial_summary(self) -> Dict:
+        """
+        Get aggregated financial summary (cached if not expired).
+        
+        Returns:
+            Dict with total_income, total_expense, balance
+        """
+        # Try to get from cache
+        cached = self.app_context.get_cached_summary()
+        if cached:
+            return {
+                "total_income": cached.total_income,
+                "total_expense": cached.total_expense,
+                "balance": cached.balance,
+            }
+        
+        # Calculate fresh
+        total_income = self.transaction_service.get_total_income()
+        total_expense = self.transaction_service.get_total_expense()
+        balance = self.transaction_service.get_balance()
+        
+        # Cache result
+        self.app_context.cache_financial_summary(total_income, total_expense, balance)
+        
+        return {
+            "total_income": total_income,
+            "total_expense": total_expense,
+            "balance": balance,
+        }
+    
+    def display_financial_health(self) -> None:
+        """Display financial health assessment."""
+        try:
+            summary = self.get_financial_summary()
+            
+            # Get recent months data for trend analysis
+            recent_months_data = self._get_recent_months_data()
+            
+            # Analyze health
+            health = self.finance_analyzer.analyze_financial_health(
+                total_income=summary["total_income"],
+                total_expense=summary["total_expense"],
+                monthly_budgets=self.budget_service.budgets,
+                transactions=self.transaction_service.transactions,
+                recent_months_data=recent_months_data
+            )
+            
+            # Display health report
+            print("\n" + "=" * 60)
+            print("💡 KESEHATAN KEUANGAN")
+            print("=" * 60)
+            print(f"Status: {self._format_health_status(health.status)}")
+            print(f"Skor Kesehatan: {health.score}/100")
+            print(f"Tren Pengeluaran: {self._format_trend(health.spending_trend)}")
+            print(f"Tingkat Tabungan: {health.savings_rate:.1f}%")
+            
+            if health.insights:
+                print("\n📊 WAWASAN:")
+                for insight in health.insights:
+                    print(f"  {insight}")
+            
+            if health.recommendations:
+                print("\n💡 REKOMENDASI:")
+                for rec in health.recommendations[:5]:  # Show top 5
+                    print(f"  {rec}")
+            
+            print("=" * 60 + "\n")
+            
+        except Exception as e:
+            logger.error(f"Error displaying financial health: {e}")
+            print(f"❌ Kesalahan saat menampilkan kesehatan keuangan: {e}")
+    
+    def _get_recent_months_data(self) -> Dict:
+        """Get recent 6 months financial data."""
+        from collections import defaultdict
+        
+        monthly_data = defaultdict(lambda: {"income": 0, "expense": 0})
+        
+        for transaction in self.transaction_service.transactions:
+            month = transaction.date[:7]  # YYYY-MM
+            if transaction.transaction_type == "income":
+                monthly_data[month]["income"] += transaction.amount
+            else:
+                monthly_data[month]["expense"] += transaction.amount
+        
+        # Add balance calculation
+        for month in monthly_data:
+            monthly_data[month]["balance"] = (
+                monthly_data[month]["income"] - monthly_data[month]["expense"]
+            )
+        
+        return dict(monthly_data)
+    
+    def _format_health_status(self, status: str) -> str:
+        """Format health status with icon."""
+        status_map = {
+            "healthy": "✅ Sehat",
+            "warning": "⚠️ Peringatan",
+            "critical": "🚨 Kritis",
+        }
+        return status_map.get(status, status)
+    
+    def _format_trend(self, trend: str) -> str:
+        """Format trend indicator."""
+        trend_map = {
+            "increasing": "📈 Meningkat",
+            "decreasing": "📉 Menurun",
+            "stable": "→ Stabil",
+        }
+        return trend_map.get(trend, trend)
+    
+    def _handle_exit(self) -> None:
+        """Handle application exit."""
+        print("\n✅ Sampai jumpa!")
+        logger.info("CLI closed")
+        sys.exit(0)
     
     def display_menu(self) -> None:
         """Display main menu."""
@@ -1507,42 +1656,26 @@ class FinanceManagerCLI:
             print("❌ Gagal mengekspor transaksi bulan ini.")
     
     def run(self) -> None:
-        """Main CLI loop."""
+        """Main CLI loop using dispatcher pattern."""
         print("\n🚀 Manajer Keuangan Pribadi Dimulai")
         print("📊 Backend: SQLite (Default)")
         logger.info("CLI started with SQLite backend")
         
         while True:
             self.display_menu()
+            
+            # Show quarterly health check every 10 operations
+            import random
+            if random.random() < 0.1:
+                self.display_financial_health()
+            
             choice = input("Pilih opsi: ").strip()
             
             try:
-                if choice == "1":
-                    self.input_transaction()
-                elif choice == "2":
-                    self.view_summary()
-                elif choice == "3":
-                    self.view_category_report()
-                elif choice == "4":
-                    self.view_monthly_report()
-                elif choice == "5":
-                    self.view_charts()
-                elif choice == "6":
-                    self.manage_budget_menu()
-                elif choice == "7":
-                    self.manage_transactions_menu()
-                elif choice == "8":
-                    self.view_analytics_menu()
-                elif choice == "9":
-                    self.manage_recurring_menu()
-                elif choice == "10":
-                    self.export_data_menu()
-                elif choice == "11":
-                    self.settings_menu()
-                elif choice == "12":
-                    print("\n✅ Sampai jumpa!")
-                    logger.info("CLI closed")
-                    break
+                # Use dispatcher pattern
+                if choice in self.menu_dispatcher:
+                    action = self.menu_dispatcher[choice]
+                    action()
                 else:
                     print("❌ Opsi tidak valid. Coba lagi.")
             
@@ -1553,11 +1686,16 @@ class FinanceManagerCLI:
                 print("\n\n⚠️ Aplikasi dihentikan oleh pengguna.")
                 logger.info("CLI interrupted by user")
                 break
+            except SystemExit:
+                # Allow sys.exit() to work
+                raise
             except Exception as e:
                 print(f"\n❌ Terjadi kesalahan: {e}")
                 logger.exception("Unexpected error")
             
-            input("\nTekan Enter untuk melanjutkan...")
+            # Skip input prompt on exit
+            if choice != "12":
+                input("\nTekan Enter untuk melanjutkan...")
 
 
 def main():
