@@ -230,7 +230,18 @@ class FinanceBot:
                 f"Jumlah: Rp{format_currency(transaction.amount)}\n"
                 f"Tanggal: {transaction.date}"
             )
-            await update.message.reply_text(response)
+            
+            # Create menu keyboard
+            keyboard = [
+                [
+                    InlineKeyboardButton("Tambah Lagi", callback_data="add_transaction"),
+                    InlineKeyboardButton("Lihat Ringkasan", callback_data="show_summary"),
+                ],
+                [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(response, reply_markup=reply_markup)
             return ConversationHandler.END
         except Exception as e:
             logger.error(f"Error adding transaction: {e}")
@@ -294,7 +305,17 @@ class FinanceBot:
                 f"Tanggal: {transaction.date}"
             )
             
-            await update.message.reply_text(response)
+            # Create menu keyboard
+            keyboard = [
+                [
+                    InlineKeyboardButton("Tambah Lagi", callback_data="add_transaction"),
+                    InlineKeyboardButton("Lihat Ringkasan", callback_data="show_summary"),
+                ],
+                [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(response, reply_markup=reply_markup)
             logger.info(f"Transaction added: {context.user_data['transaction_type']} {context.user_data['category']}")
         
         except Exception as e:
@@ -427,6 +448,45 @@ class FinanceBot:
         # Log other errors for debugging
         logger.error(f"Error occurred: {error}", exc_info=True)
     
+    async def menu_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle menu callbacks from inline buttons."""
+        query = update.callback_query
+        await query.answer()
+        
+        if query.data == "add_transaction":
+            # Start a new transaction
+            await self.start_add_transaction(update, context)
+        elif query.data == "show_summary":
+            # Show summary
+            await self.summary(update, context)
+        elif query.data == "main_menu":
+            # Show main menu with all commands
+            menu_text = (
+                "🏠 MENU UTAMA\n\n"
+                "Pilih perintah di bawah:\n\n"
+                "💰 /add_transaction - Tambah transaksi\n"
+                "📊 /summary - Lihat ringkasan\n"
+                "🏷️ /category_report - Laporan kategori\n"
+                "📅 /monthly_report - Laporan bulanan\n"
+                "💳 /set_budget - Atur anggaran\n"
+                "✅ /budget_status - Status anggaran\n"
+                "❓ /help - Bantuan"
+            )
+            
+            keyboard = [
+                [
+                    InlineKeyboardButton("Tambah Transaksi", callback_data="add_transaction"),
+                    InlineKeyboardButton("Lihat Ringkasan", callback_data="show_summary"),
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            # Edit the message if it's from a callback, otherwise send new message
+            try:
+                await query.edit_message_text(text=menu_text, reply_markup=reply_markup)
+            except Exception:
+                await query.message.reply_text(menu_text, reply_markup=reply_markup)
+    
     def get_application(self) -> Application:
         """Build and return the Telegram bot application."""
         app = Application.builder().token(self.token).build()
@@ -465,6 +525,9 @@ class FinanceBot:
             fallbacks=[CommandHandler("cancel", self.cancel)],
         )
         app.add_handler(set_budget_handler)
+        
+        # Add menu callback handler for post-transaction buttons
+        app.add_handler(CallbackQueryHandler(self.menu_callback, pattern="^(add_transaction|show_summary|main_menu)$"))
         
         # Add error handler
         app.add_error_handler(self.error_handler)
