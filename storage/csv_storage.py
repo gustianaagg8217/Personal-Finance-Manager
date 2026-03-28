@@ -138,3 +138,89 @@ class CSVStorage:
         except IOError as e:
             logger.error(f"Error saving budget: {e}")
             raise
+    
+    @classmethod
+    def delete_all_transactions(cls) -> None:
+        """Delete all transactions by clearing the CSV file."""
+        try:
+            cls._ensure_file_exists(cls.TRANSACTIONS_FILE, cls.FIELDNAMES)
+            with open(cls.TRANSACTIONS_FILE, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=cls.FIELDNAMES)
+                writer.writeheader()
+            logger.warning("All transactions deleted from CSV")
+        except IOError as e:
+            logger.error(f"Error deleting all transactions: {e}")
+            raise
+    
+    @classmethod
+    def delete_all_budgets(cls) -> None:
+        """Delete all budgets by clearing the budget CSV file."""
+        try:
+            cls._ensure_file_exists(cls.BUDGET_FILE, cls.BUDGET_FIELDNAMES)
+            with open(cls.BUDGET_FILE, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=cls.BUDGET_FIELDNAMES)
+                writer.writeheader()
+            logger.warning("All budgets deleted from CSV")
+        except IOError as e:
+            logger.error(f"Error deleting all budgets: {e}")
+            raise
+    
+    @classmethod
+    def delete_transaction(cls, transaction_id: int) -> None:
+        """
+        Delete a transaction by ID.
+        
+        Args:
+            transaction_id: ID of transaction to delete
+        """
+        cls._ensure_file_exists(cls.TRANSACTIONS_FILE, cls.FIELDNAMES)
+        
+        try:
+            transactions = cls.load_transactions()
+            remaining = [t for t in transactions if t.transaction_id != transaction_id]
+            
+            with open(cls.TRANSACTIONS_FILE, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=cls.FIELDNAMES)
+                writer.writeheader()
+                for t in remaining:
+                    writer.writerow(t.to_dict())
+            logger.info(f"Deleted transaction ID: {transaction_id}")
+        except IOError as e:
+            logger.error(f"Error deleting transaction: {e}")
+            raise
+    
+    @classmethod
+    def update_transaction(cls, transaction: Transaction) -> None:
+        """
+        Update an existing transaction.
+        
+        Args:
+            transaction: Transaction to update
+        """
+        cls._ensure_file_exists(cls.TRANSACTIONS_FILE, cls.FIELDNAMES)
+        
+        try:
+            transactions = cls.load_transactions()
+            updated = []
+            found = False
+            
+            for t in transactions:
+                if t.transaction_id == transaction.transaction_id:
+                    updated.append(transaction)
+                    found = True
+                else:
+                    updated.append(t)
+            
+            if not found:
+                logger.warning(f"Transaction ID {transaction.transaction_id} not found")
+                return
+            
+            with open(cls.TRANSACTIONS_FILE, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=cls.FIELDNAMES)
+                writer.writeheader()
+                for t in updated:
+                    writer.writerow(t.to_dict())
+            logger.info(f"Updated transaction ID: {transaction.transaction_id}")
+        except IOError as e:
+            logger.error(f"Error updating transaction: {e}")
+            raise

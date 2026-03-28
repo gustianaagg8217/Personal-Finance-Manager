@@ -167,3 +167,13 @@ class BudgetService:
         report += "=" * 80 + "\n"
         
         return report
+    
+    def delete_all_budgets(self) -> None:
+        """Delete all budgets from storage."""
+        try:
+            self.storage.delete_all_budgets()
+            self.budgets = {}
+            logger.info("All budgets deleted")
+        except Exception as e:
+            logger.error(f"Error deleting all budgets: {e}")
+            raise

@@ -1,6 +1,8 @@
 """Telegram Bot for Personal Finance Manager."""
 
 import logging
+import json
+import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -25,7 +27,33 @@ logger = logging.getLogger(__name__)
 
 # Conversation states
 TRANSACTION_TYPE, CATEGORY, AMOUNT, NOTE = range(4)
-BUDGET_CATEGORY, BUDGET_AMOUNT = range(4, 6)
+BUDGET_CATEGORY, BUDGET_TOTAL_INCOME, BUDGET_AMOUNT = range(4, 7)
+
+# Predefined categories
+EXPENSE_CATEGORIES = [
+    "Kebutuhan Pokok",
+    "Tabungan/Investasi",
+    "Gaya Hidup",
+    "Cicilan/Hutang",
+    "Proteksi"
+]
+
+INCOME_CATEGORIES = [
+    "Gaji",
+    "Bonus",
+    "Investasi",
+    "Bisnis",
+    "Lainnya"
+]
+
+# Default budget allocation percentages by category
+DEFAULT_BUDGET_PERCENTAGES = {
+    "Kebutuhan Pokok": 50,        # 50%
+    "Tabungan/Investasi": 20,     # 20%
+    "Gaya Hidup": 15,             # 15%
+    "Cicilan/Hutang": 10,         # 10%
+    "Proteksi": 5                 # 5%
+}
 
 
 class FinanceBot:
@@ -42,7 +70,64 @@ class FinanceBot:
         self.transaction_service = TransactionService()
         self.report_service = ReportService(self.transaction_service)
         self.budget_service = BudgetService(self.transaction_service)
+        self.custom_categories_file = "custom_categories.json"
+        
+        # Load custom categories
+        self.custom_expense_categories = self.load_custom_categories("expense")
+        self.custom_income_categories = self.load_custom_categories("income")
+        
         logger.info("FinanceBot initialized")
+    
+    def load_custom_categories(self, category_type: str) -> list:
+        """Load custom categories from file for a specific type (expense/income)."""
+        if os.path.exists(self.custom_categories_file):
+            try:
+                with open(self.custom_categories_file, 'r') as f:
+                    data = json.load(f)
+                    return data.get(category_type, [])
+            except Exception as e:
+                logger.error(f"Error loading custom categories: {e}")
+                return []
+        return []
+    
+    def save_custom_categories(self) -> None:
+        """Save custom categories to file."""
+        try:
+            data = {
+                "expense": self.custom_expense_categories,
+                "income": self.custom_income_categories
+            }
+            with open(self.custom_categories_file, 'w') as f:
+                json.dump(data, f, indent=4)
+            logger.info("Custom categories saved")
+        except Exception as e:
+            logger.error(f"Error saving custom categories: {e}")
+    
+    def add_custom_category(self, category_type: str, category_name: str) -> bool:
+        """Add a new custom category if it doesn't already exist."""
+        if category_type == "expense":
+            categories = EXPENSE_CATEGORIES + self.custom_expense_categories
+            custom_list = self.custom_expense_categories
+        else:
+            categories = INCOME_CATEGORIES + self.custom_income_categories
+            custom_list = self.custom_income_categories
+        
+        # Check if category already exists
+        if category_name in categories:
+            return False
+        
+        # Add to custom categories and save
+        custom_list.append(category_name)
+        self.save_custom_categories()
+        logger.info(f"Custom {category_type} category added: {category_name}")
+        return True
+    
+    def get_all_categories(self, category_type: str) -> list:
+        """Get all categories (predefined + custom) for a specific type."""
+        if category_type == "expense":
+            return EXPENSE_CATEGORIES + self.custom_expense_categories
+        else:
+            return INCOME_CATEGORIES + self.custom_income_categories
     
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Start command handler."""
@@ -102,7 +187,14 @@ class FinanceBot:
             f"💸 Pengeluaran:  Rp{format_currency(expense)}\n"
             f"💰 Saldo:        Rp{format_currency(balance)}\n"
         )
-        await update.message.reply_text(text)
+        
+        # Create menu keyboard
+        keyboard = [
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(text, reply_markup=reply_markup)
     
     async def category_report(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Show expense by category."""
@@ -111,7 +203,11 @@ class FinanceBot:
         expenses = self.transaction_service.get_expenses_by_category()
         
         if not expenses:
-            await update.message.reply_text("❌ Tidak ada catatan pengeluaran.")
+            keyboard = [
+                [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text("❌ Tidak ada catatan pengeluaran.", reply_markup=reply_markup)
             return
         
         text = "🏷️ PENGELUARAN BERDASARKAN KATEGORI\n\n"
@@ -122,7 +218,14 @@ class FinanceBot:
             text += f"• {category}: Rp{format_currency(amount)} ({percentage:.1f}%)\n"
         
         text += f"\n💹 Total: Rp{format_currency(total)}"
-        await update.message.reply_text(text)
+        
+        # Create menu keyboard
+        keyboard = [
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(text, reply_markup=reply_markup)
     
     async def monthly_report(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Show monthly report."""
@@ -139,7 +242,11 @@ class FinanceBot:
                 monthly_data[month]["expense"] += transaction.amount
         
         if not monthly_data:
-            await update.message.reply_text("❌ Tidak ada data transaksi.")
+            keyboard = [
+                [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text("❌ Tidak ada data transaksi.", reply_markup=reply_markup)
             return
         
         text = "📅 LAPORAN BULANAN\n\n"
@@ -155,13 +262,20 @@ class FinanceBot:
             text += f"  💸 Pengeluaran: Rp{format_currency(expense)}\n"
             text += f"  💰 Saldo: Rp{format_currency(balance)}\n\n"
         
-        await update.message.reply_text(text)
+        # Create menu keyboard
+        keyboard = [
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(text, reply_markup=reply_markup)
     
     async def start_add_transaction(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Start transaction conversation."""
         keyboard = [
             [InlineKeyboardButton("💰 Income", callback_data="income")],
             [InlineKeyboardButton("💸 Expense", callback_data="expense")],
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -177,33 +291,54 @@ class FinanceBot:
         query = update.callback_query
         await query.answer()
         
-        context.user_data["transaction_type"] = query.data
+        transaction_type = query.data  # "income" or "expense"
+        context.user_data["transaction_type"] = transaction_type
+        
+        # Show category selection buttons based on transaction type (include custom categories)
+        categories = self.get_all_categories(transaction_type)
+        keyboard = []
+        for idx in range(0, len(categories), 2):
+            row = []
+            # Use category name directly in callback_data
+            row.append(InlineKeyboardButton(categories[idx], callback_data=f"cat_{categories[idx]}"))
+            if idx + 1 < len(categories):
+                row.append(InlineKeyboardButton(categories[idx + 1], callback_data=f"cat_{categories[idx + 1]}"))
+            keyboard.append(row)
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
         
         await query.edit_message_text(
-            text=f"✅ Tipe: {query.data.capitalize()}\n\n"
-            "Sekarang ketik kategori:\n"
-            "(contoh: groceries, utilities, salary, bonus)\n\n"
-            "Ketik 'batal' untuk membatalkan"
+            text=f"✅ Jenis: {transaction_type.capitalize()}\n\nPilih kategori:",
+            reply_markup=reply_markup
         )
         
         return CATEGORY
     
-    async def category_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        """Handle category input."""
-        text = update.message.text.strip()
+    async def category_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle category selection from buttons."""
+        query = update.callback_query
+        await query.answer()
         
-        if is_cancel_command(text):
-            await update.message.reply_text("❌ Operasi dibatalkan.")
-            return ConversationHandler.END
+        # Extract category name from callback_data (format: "cat_KategoriNama")
+        category = query.data.replace("cat_", "")
         
-        if not text:
-            await update.message.reply_text("❌ Kategori tidak boleh kosong.")
-            return CATEGORY
+        # Check if user selected "Lainnya" (Other category)
+        if category == "Lainnya":
+            # Store that we're waiting for custom category input
+            context.user_data["waiting_for_custom_category"] = True
+            
+            await query.edit_message_text(
+                text="✏️ Masukkan nama kategori baru:\n\n"
+                "Ketik 'batal' untuk membatalkan"
+            )
+            
+            return CATEGORY  # Stay in CATEGORY state to receive text input
         
-        context.user_data["category"] = text
+        # For regular categories, save and move to amount
+        context.user_data["category"] = category
         
-        await update.message.reply_text(
-            f"✅ Kategori: {text}\n\n"
+        await query.edit_message_text(
+            text=f"✅ Kategori: {category}\n\n"
             "Sekarang ketik jumlah:\n"
             "(contoh: 50000)\n\n"
             "Ketik 'batal' untuk membatalkan"
@@ -211,8 +346,55 @@ class FinanceBot:
         
         return AMOUNT
     
+    async def category_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle category input (for cancel command and custom category input)."""
+        text = update.message.text.strip()
+        
+        if is_cancel_command(text):
+            return await self.show_main_menu_on_cancel(update)
+        
+        # Check if we're waiting for custom category input
+        if context.user_data.get("waiting_for_custom_category"):
+            context.user_data.pop("waiting_for_custom_category", None)
+            
+            custom_category = text
+            transaction_type = context.user_data.get("transaction_type")
+            
+            # Try to add custom category
+            if self.add_custom_category(transaction_type, custom_category):
+                context.user_data["category"] = custom_category
+                await update.message.reply_text(
+                    f"✅ Kategori baru '{custom_category}' ditambahkan!\n\n"
+                    "Sekarang ketik jumlah:\n"
+                    "(contoh: 50000)\n\n"
+                    "Ketik 'batal' untuk membatalkan"
+                )
+                return AMOUNT
+            else:
+                # Category already exists, use it
+                context.user_data["category"] = custom_category
+                await update.message.reply_text(
+                    f"✅ Kategori: {custom_category}\n\n"
+                    "Sekarang ketik jumlah:\n"
+                    "(contoh: 50000)\n\n"
+                    "Ketik 'batal' untuk membatalkan"
+                )
+                return AMOUNT
+        
+        # If user types something without selecting category button, show an error
+        await update.message.reply_text(
+            "❌ Silakan pilih kategori dari tombol yang disediakan.\n"
+            "Ketik 'batal' untuk membatalkan"
+        )
+        return CATEGORY
+    
     async def skip_note(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle /skip command to skip note input."""
+        text = update.message.text.strip() if update.message else ""
+        
+        if is_cancel_command(text):
+            return await self.show_main_menu_on_cancel(update)
+        
         # Save transaction without note
         try:
             transaction = self.transaction_service.add_transaction(
@@ -253,8 +435,7 @@ class FinanceBot:
         text = update.message.text.strip()
         
         if is_cancel_command(text):
-            await update.message.reply_text("❌ Operasi dibatalkan.")
-            return ConversationHandler.END
+            return await self.show_main_menu_on_cancel(update)
         
         is_valid, amount = validate_amount(text)
         
@@ -281,8 +462,7 @@ class FinanceBot:
         text = update.message.text.strip()
         
         if is_cancel_command(text):
-            await update.message.reply_text("❌ Operasi dibatalkan.")
-            return ConversationHandler.END
+            return await self.show_main_menu_on_cancel(update)
         
         note = text
         
@@ -326,43 +506,171 @@ class FinanceBot:
     
     async def start_set_budget(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Start budget setting conversation."""
+        # Show category selection buttons (only expense categories for budgets, including custom)
+        categories = self.get_all_categories("expense")
+        keyboard = []
+        for idx in range(0, len(categories), 2):
+            row = []
+            row.append(InlineKeyboardButton(categories[idx], callback_data=f"budget_cat_{categories[idx]}"))
+            if idx + 1 < len(categories):
+                row.append(InlineKeyboardButton(categories[idx + 1], callback_data=f"budget_cat_{categories[idx + 1]}"))
+            keyboard.append(row)
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         await update.message.reply_text(
-            "Ketik kategori untuk mengatur anggaran:\n"
-            "(contoh: groceries, utilities, entertainment)\n\n"
+            "Pilih kategori untuk mengatur anggaran:",
+            reply_markup=reply_markup
+        )
+        return BUDGET_CATEGORY
+    
+    async def budget_category_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle budget category selection from buttons."""
+        query = update.callback_query
+        await query.answer()
+        
+        # Extract category name from callback_data (format: "budget_cat_KategoriNama")
+        category = query.data.replace("budget_cat_", "")
+        
+        # Check if user selected "Lainnya" (Other category)
+        if category == "Lainnya":
+            # Store that we're waiting for custom category input
+            context.user_data["waiting_for_custom_budget_category"] = True
+            
+            await query.edit_message_text(
+                text="✏️ Masukkan nama kategori pengeluaran baru:\n\n"
+                "Ketik 'batal' untuk membatalkan"
+            )
+            
+            return BUDGET_CATEGORY  # Stay in BUDGET_CATEGORY state to receive text input
+        
+        # For regular categories, save and move to total income
+        context.user_data["budget_category"] = category
+        
+        percentage = DEFAULT_BUDGET_PERCENTAGES.get(category)
+        if percentage:
+            message_text = (
+                f"✅ Kategori: {category} ({percentage}%)\n\n"
+                "Sekarang ketik total pendapatan bulanan:\n"
+                "(Anggaran akan dihitung otomatis: Rp amount × {percentage}%)\n\n"
+                "Contoh: 10000000\n"
+                "Ketik 'batal' untuk membatalkan"
+            )
+        else:
+            message_text = (
+                f"✅ Kategori: {category} (Custom - Tidak ada persentase default)\n\n"
+                "Sekarang ketik jumlah anggaran bulanan:\n"
+                "(contoh: 5000000)\n\n"
+                "Ketik 'batal' untuk membatalkan"
+            )
+        
+        await query.edit_message_text(text=message_text)
+        
+        return BUDGET_TOTAL_INCOME
+    
+    async def budget_category_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle budget category input (for cancel command and custom category input)."""
+        text = update.message.text.strip()
+        
+        if is_cancel_command(text):
+            return await self.show_main_menu_on_cancel(update)
+        
+        # Check if we're waiting for custom budget category input
+        if context.user_data.get("waiting_for_custom_budget_category"):
+            context.user_data.pop("waiting_for_custom_budget_category", None)
+            
+            custom_category = text
+            
+            # Try to add custom expense category for budget
+            if self.add_custom_category("expense", custom_category):
+                context.user_data["budget_category"] = custom_category
+                await update.message.reply_text(
+                    f"✅ Kategori baru '{custom_category}' ditambahkan!\n\n"
+                    "Sekarang ketik jumlah anggaran bulanan:\n"
+                    "(contoh: 5000000)\n\n"
+                    "Ketik 'batal' untuk membatalkan"
+                )
+                return BUDGET_AMOUNT
+            else:
+                # Category already exists, use it
+                context.user_data["budget_category"] = custom_category
+                await update.message.reply_text(
+                    f"✅ Kategori: {custom_category}\n\n"
+                    "Sekarang ketik jumlah anggaran bulanan:\n"
+                    "(contoh: 5000000)\n\n"
+                    "Ketik 'batal' untuk membatalkan"
+                )
+                return BUDGET_AMOUNT
+        
+        # If user types something without selecting category button, show an error
+        await update.message.reply_text(
+            "❌ Silakan pilih kategori dari tombol yang disediakan.\n"
             "Ketik 'batal' untuk membatalkan"
         )
         return BUDGET_CATEGORY
     
-    async def budget_category_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        """Handle budget category input."""
+    async def budget_total_income_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle total income input for budget calculation."""
         text = update.message.text.strip()
         
         if is_cancel_command(text):
-            await update.message.reply_text("❌ Operasi dibatalkan.")
-            return ConversationHandler.END
+            return await self.show_main_menu_on_cancel(update)
         
-        if not text:
-            await update.message.reply_text("❌ Kategori tidak boleh kosong.")
-            return BUDGET_CATEGORY
+        is_valid, total_income = validate_amount(text)
         
-        context.user_data["budget_category"] = text
+        if not is_valid:
+            await update.message.reply_text(
+                "❌ Jumlah tidak valid. Masukkan angka positif.\n"
+                "Coba lagi:"
+            )
+            return BUDGET_TOTAL_INCOME
         
-        await update.message.reply_text(
-            f"✅ Kategori: {text}\n\n"
-            "Sekarang ketik anggaran bulanan:\n"
-            "(contoh: 5000000)\n\n"
-            "Ketik 'batal' untuk membatalkan"
-        )
+        category = context.user_data.get("budget_category")
+        percentage = DEFAULT_BUDGET_PERCENTAGES.get(category)
         
-        return BUDGET_AMOUNT
+        if percentage:
+            # Calculate budget based on percentage
+            budget_amount = int(total_income * percentage / 100)
+            
+            await update.message.reply_text(
+                f"📊 Perhitungan Anggaran:\n"
+                f"Total Pendapatan: Rp{format_currency(total_income)}\n"
+                f"Persentase: {percentage}%\n"
+                f"Anggaran untuk {category}: Rp{format_currency(budget_amount)}\n\n"
+                f"✅ Menyimpan anggaran..."
+            )
+        else:
+            # For custom categories without percentage, use the total_income directly as the amount
+            budget_amount = total_income
+            
+            await update.message.reply_text(
+                f"✅ Menyimpan anggaran untuk {category}:\n"
+                f"Rp{format_currency(budget_amount)}"
+            )
+        
+        # Save the budget
+        context.user_data["budget_amount"] = budget_amount
+        self.budget_service.set_budget(category, budget_amount)
+        
+        # Create menu keyboard
+        keyboard = [
+            [
+                InlineKeyboardButton("Atur Anggaran Lagi", callback_data="set_budget"),
+                InlineKeyboardButton("Lihat Status", callback_data="budget_status"),
+            ],
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text("✅ Anggaran berhasil disimpan!", reply_markup=reply_markup)
+        return ConversationHandler.END
     
     async def budget_amount_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle budget amount input and save."""
         text = update.message.text.strip()
         
         if is_cancel_command(text):
-            await update.message.reply_text("❌ Operasi dibatalkan.")
-            return ConversationHandler.END
+            return await self.show_main_menu_on_cancel(update)
         
         is_valid, amount = validate_amount(text)
         
@@ -385,7 +693,13 @@ class FinanceBot:
                 f"Anggaran: Rp{format_currency(amount)} per bulan"
             )
             
-            await update.message.reply_text(response)
+            # Create menu keyboard
+            keyboard = [
+                [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(response, reply_markup=reply_markup)
             logger.info(f"Budget set: {context.user_data['budget_category']} {amount}")
         
         except Exception as e:
@@ -399,7 +713,11 @@ class FinanceBot:
         await update.message.chat.send_action(ChatAction.TYPING)
         
         if not self.budget_service.budgets:
-            await update.message.reply_text("❌ Belum ada anggaran yang ditetapkan.")
+            keyboard = [
+                [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text("❌ Belum ada anggaran yang ditetapkan.", reply_markup=reply_markup)
             return
         
         text = "✅ STATUS ANGGARAN BULAN INI\n\n"
@@ -425,12 +743,125 @@ class FinanceBot:
                 f"  Sisa: Rp{format_currency(remaining)} {budget_text}\n\n"
             )
         
-        await update.message.reply_text(text)
+        # Create menu keyboard
+        keyboard = [
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    
+    async def exit_to_main_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Exit conversation and show main menu."""
+        query = update.callback_query
+        await query.answer()
+        
+        menu_text = (
+            "🏠 MENU UTAMA\n\n"
+            "Pilih perintah di bawah:\n\n"
+            "💰 /add_transaction - Tambah transaksi\n"
+            "📊 /summary - Lihat ringkasan\n"
+            "🏷️ /category_report - Laporan kategori\n"
+            "📅 /monthly_report - Laporan bulanan\n"
+            "💳 /set_budget - Atur anggaran\n"
+            "✅ /budget_status - Status anggaran\n"
+            "❓ /help - Bantuan"
+        )
+        
+        keyboard = [
+            [
+                InlineKeyboardButton("Tambah Transaksi", callback_data="add_transaction"),
+                InlineKeyboardButton("Lihat Ringkasan", callback_data="show_summary"),
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.message.reply_text(f"⏮️ Operasi dibatalkan.\n\n{menu_text}", reply_markup=reply_markup)
+        return ConversationHandler.END
+    
+    async def show_main_menu_on_cancel(self, update: Update) -> int:
+        """Show main menu when operation is cancelled."""
+        menu_text = (
+            "🏠 MENU UTAMA\n\n"
+            "Pilih perintah di bawah:\n\n"
+            "💰 /add_transaction - Tambah transaksi\n"
+            "📊 /summary - Lihat ringkasan\n"
+            "🏷️ /category_report - Laporan kategori\n"
+            "📅 /monthly_report - Laporan bulanan\n"
+            "💳 /set_budget - Atur anggaran\n"
+            "✅ /budget_status - Status anggaran\n"
+            "❓ /help - Bantuan"
+        )
+        
+        keyboard = [
+            [
+                InlineKeyboardButton("Tambah Transaksi", callback_data="add_transaction"),
+                InlineKeyboardButton("Lihat Ringkasan", callback_data="show_summary"),
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(f"⏮️ Operasi dibatalkan.\n\n{menu_text}", reply_markup=reply_markup)
+        return ConversationHandler.END
     
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Cancel conversation."""
-        await update.message.reply_text("❌ Operasi dibatalkan.")
-        return ConversationHandler.END
+        return await self.show_main_menu_on_cancel(update)
+    
+    async def menu_add_transaction_entry(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Entry point for add_transaction from menu callback."""
+        query = update.callback_query
+        await query.answer()
+        
+        # Show transaction type selection buttons
+        keyboard = [
+            [InlineKeyboardButton("💰 Income", callback_data="add_transaction_income")],
+            [InlineKeyboardButton("💸 Expense", callback_data="add_transaction_expense")],
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.message.reply_text(
+            "Pilih jenis transaksi:",
+            reply_markup=reply_markup
+        )
+        
+        return TRANSACTION_TYPE
+    
+    async def transaction_type_from_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle transaction type selection from menu."""
+        query = update.callback_query
+        await query.answer()
+        
+        # Extract the type (income or expense) from callback_data
+        if query.data == "add_transaction_income":
+            transaction_type = "income"
+        else:
+            transaction_type = "expense"
+        
+        context.user_data["transaction_type"] = transaction_type
+        
+        # Select appropriate categories based on transaction type (include custom categories)
+        categories = self.get_all_categories(transaction_type)
+        
+        # Build keyboard with category buttons
+        keyboard = []
+        for idx in range(0, len(categories), 2):
+            row = []
+            row.append(InlineKeyboardButton(categories[idx], callback_data=f"cat_{categories[idx]}"))
+            if idx + 1 < len(categories):
+                row.append(InlineKeyboardButton(categories[idx + 1], callback_data=f"cat_{categories[idx + 1]}"))
+            keyboard.append(row)
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.message.reply_text(
+            f"✅ Jenis: {transaction_type.capitalize()}\n\n"
+            "Pilih kategori:",
+            reply_markup=reply_markup
+        )
+        
+        return CATEGORY
     
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle errors from Telegram."""
@@ -449,16 +880,26 @@ class FinanceBot:
         logger.error(f"Error occurred: {error}", exc_info=True)
     
     async def menu_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle menu callbacks from inline buttons."""
+        """Handle menu callbacks from inline buttons (show_summary and main_menu)."""
         query = update.callback_query
         await query.answer()
         
-        if query.data == "add_transaction":
-            # Start a new transaction
-            await self.start_add_transaction(update, context)
-        elif query.data == "show_summary":
-            # Show summary
-            await self.summary(update, context)
+        if query.data == "show_summary":
+            # Show summary using callback_query message
+            await query.message.chat.send_action(ChatAction.TYPING)
+            
+            income = self.transaction_service.get_total_income()
+            expense = self.transaction_service.get_total_expense()
+            balance = self.transaction_service.get_balance()
+            
+            text = (
+                "📊 RINGKASAN KEUANGAN\n\n"
+                f"💵 Pendapatan:   Rp{format_currency(income)}\n"
+                f"💸 Pengeluaran:  Rp{format_currency(expense)}\n"
+                f"💰 Saldo:        Rp{format_currency(balance)}\n"
+            )
+            await query.message.reply_text(text)
+            
         elif query.data == "main_menu":
             # Show main menu with all commands
             menu_text = (
@@ -501,10 +942,19 @@ class FinanceBot:
         
         # Add transaction conversation handler
         add_transaction_handler = ConversationHandler(
-            entry_points=[CommandHandler("add_transaction", self.start_add_transaction)],
+            entry_points=[
+                CommandHandler("add_transaction", self.start_add_transaction)
+            ],
             states={
-                TRANSACTION_TYPE: [CallbackQueryHandler(self.transaction_type_callback)],
-                CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.category_input)],
+                TRANSACTION_TYPE: [
+                    CallbackQueryHandler(self.transaction_type_callback, pattern="^(income|expense)$"),
+                    CallbackQueryHandler(self.transaction_type_from_menu, pattern="^(add_transaction_income|add_transaction_expense)$"),
+                    CallbackQueryHandler(self.exit_to_main_menu, pattern="^main_menu$")
+                ],
+                CATEGORY: [
+                    CallbackQueryHandler(self.category_callback, pattern="^cat_.+$"),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.category_input)
+                ],
                 AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.amount_input)],
                 NOTE: [
                     CommandHandler("skip", self.skip_note),
@@ -519,15 +969,23 @@ class FinanceBot:
         set_budget_handler = ConversationHandler(
             entry_points=[CommandHandler("set_budget", self.start_set_budget)],
             states={
-                BUDGET_CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.budget_category_input)],
+                BUDGET_CATEGORY: [
+                    CallbackQueryHandler(self.budget_category_callback, pattern="^budget_cat_.+$"),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.budget_category_input)
+                ],
+                BUDGET_TOTAL_INCOME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.budget_total_income_input)],
                 BUDGET_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.budget_amount_input)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
         )
         app.add_handler(set_budget_handler)
         
-        # Add menu callback handler for post-transaction buttons
-        app.add_handler(CallbackQueryHandler(self.menu_callback, pattern="^(add_transaction|show_summary|main_menu)$"))
+        # Add callback handler for add_transaction button from menu
+        app.add_handler(CallbackQueryHandler(self.menu_add_transaction_entry, pattern="^add_transaction$"))
+        
+        # Add menu callback handler for post-transaction buttons (show_summary and main_menu)
+        # Note: add_transaction is handled by the transaction conversation handler
+        app.add_handler(CallbackQueryHandler(self.menu_callback, pattern="^(show_summary|main_menu)$"))
         
         # Add error handler
         app.add_error_handler(self.error_handler)

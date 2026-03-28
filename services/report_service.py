@@ -2,6 +2,8 @@
 
 import logging
 from collections import defaultdict
+import csv
+from datetime import datetime
 
 from services.transaction_service import TransactionService
 from utils.formatter import format_currency, format_percentage, highlight_warning
@@ -119,3 +121,179 @@ class ReportService:
         report += "=" * 70 + "\n"
         
         return report
+    
+    # ============ ANALYTICS & INSIGHTS ============
+    
+    def generate_trend_report(self, months: int = 6) -> str:
+        """
+        Generate spending trend analysis report.
+        
+        Args:
+            months: Number of months to analyze
+            
+        Returns:
+            Formatted trend report
+        """
+        trends = self.service.get_spending_trends(months)
+        
+        report = "\n" + "=" * 70 + "\n"
+        report += f"ANALISA TREN ({months} BULAN TERAKHIR)\n"
+        report += "=" * 70 + "\n"
+        report += f"{'Bulan':<12} {'Pendapatan':>15} {'Pengeluaran':>15} {'Tren':>15}\n"
+        report += "-" * 70 + "\n"
+        
+        prev_expense = None
+        for month, data in sorted(trends.items()):
+            income = data["income"]
+            expense = data["expense"]
+            
+            trend_indicator = "→"
+            if prev_expense is not None:
+                if expense > prev_expense:
+                    trend_indicator = "↑"
+                elif expense < prev_expense:
+                    trend_indicator = "↓"
+            
+            report += f"{month:<12} Rp{format_currency(income):>13} Rp{format_currency(expense):>13} {trend_indicator:>15}\n"
+            prev_expense = expense
+        
+        report += "=" * 70 + "\n"
+        
+        forecast = self.service.forecast_next_month()
+        report += f"\n📊 PREDIKSI BULAN DEPAN:\n"
+        report += f"{'Kategori':<25} {'Estimasi':>15}\n"
+        report += "-" * 42 + "\n"
+        for cat, amount in forecast.items():
+            report += f"{cat:<25} Rp{format_currency(amount):>13}\n"
+        
+        return report
+    
+    def generate_statistics_report(self) -> str:
+        """
+        Generate comprehensive statistics report.
+        
+        Returns:
+            Formatted statistics report
+        """
+        stats = self.service.get_statistics()
+        
+        report = "\n" + "=" * 70 + "\n"
+        report += "STATISTIK KEUANGAN\n"
+        report += "=" * 70 + "\n"
+        report += f"Total Transaksi:          {stats['total_transactions']}\n"
+        report += f"  • Pemasukan:            {stats['income_count']}\n"
+        report += f"  • Pengeluaran:          {stats['expense_count']}\n"
+        report += f"\nTotal Pemasukan:          Rp{format_currency(stats['total_income'])}\n"
+        report += f"Total Pengeluaran:        Rp{format_currency(stats['total_expense'])}\n"
+        report += f"Saldo Akhir:              Rp{format_currency(stats['balance'])}\n"
+        report += f"\nRata-rata Pemasukan:      Rp{format_currency(stats['avg_income'])}\n"
+        report += f"Rata-rata Pengeluaran:    Rp{format_currency(stats['avg_expense'])}\n"
+        report += f"Tingkat Tabungan:         {stats['savings_rate']:.1f}%\n"
+        
+        if stats['most_expensive_category']:
+            report += f"\nKategori Termahal:        {stats['most_expensive_category']}\n"
+            report += f"Pengeluaran Tertinggi:    Rp{format_currency(stats['max_expense_amount'])}\n"
+        
+        report += "=" * 70 + "\n"
+        
+        return report
+    
+    # ============ DATA EXPORT ============
+    
+    def export_to_csv(self, filename: str = "export_transactions.csv") -> bool:
+        """
+        Export transactions to CSV file.
+        
+        Args:
+            filename: Output CSV filename
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            with open(filename, "w", newline="", encoding="utf-8") as f:
+                fieldnames = ["ID", "Tanggal", "Jenis", "Kategori", "Jumlah", "Catatan"]
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                for t in self.service.transactions:
+                    writer.writerow({
+                        "ID": t.transaction_id,
+                        "Tanggal": t.date,
+                        "Jenis": t.transaction_type.capitalize(),
+                        "Kategori": t.category,
+                        "Jumlah": t.amount,
+                        "Catatan": t.note
+                    })
+            
+            logger.info(f"Exported {len(self.service.transactions)} transactions to {filename}")
+            return True
+        except Exception as e:
+            logger.error(f"Error exporting to CSV: {e}")
+            return False
+    
+    def export_to_text(self, filename: str = "export_report.txt") -> bool:
+        """
+        Export comprehensive report to text file.
+        
+        Args:
+            filename: Output text filename
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                f.write(f"LAPORAN KEUANGAN PRIBADI\n")
+                f.write(f"Tanggal Ekspor: {timestamp}\n")
+                f.write("=" * 70 + "\n\n")
+                
+                f.write(self.generate_summary_report())
+                f.write("\n" + self.generate_category_report())
+                f.write("\n" + self.generate_monthly_report())
+                f.write("\n" + self.generate_statistics_report())
+            
+            logger.info(f"Exported report to {filename}")
+            return True
+        except Exception as e:
+            logger.error(f"Error exporting report: {e}")
+            return False
+    
+    def export_transactions_by_month(self, year_month: str, filename: str = None) -> bool:
+        """
+        Export transactions for specific month to CSV.
+        
+        Args:
+            year_month: Month in YYYY-MM format
+            filename: Output filename (auto-generated if None)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if filename is None:
+            filename = f"transactions_{year_month}.csv"
+        
+        try:
+            month_transactions = self.service.get_transactions_by_month(year_month)
+            
+            with open(filename, "w", newline="", encoding="utf-8") as f:
+                fieldnames = ["ID", "Tanggal", "Jenis", "Kategori", "Jumlah", "Catatan"]
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                for t in sorted(month_transactions, key=lambda x: x.date):
+                    writer.writerow({
+                        "ID": t.transaction_id,
+                        "Tanggal": t.date,
+                        "Jenis": t.transaction_type.capitalize(),
+                        "Kategori": t.category,
+                        "Jumlah": t.amount,
+                        "Catatan": t.note
+                    })
+            
+            logger.info(f"Exported {len(month_transactions)} transactions to {filename}")
+            return True
+        except Exception as e:
+            logger.error(f"Error exporting monthly transactions: {e}")
+            return False

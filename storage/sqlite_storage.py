@@ -46,6 +46,22 @@ class SQLiteStorage:
             )
         """)
         
+        # Create recurring transactions table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS recurring_transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                category TEXT NOT NULL,
+                amount REAL NOT NULL,
+                frequency TEXT NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT,
+                is_active INTEGER DEFAULT 1,
+                note TEXT
+            )
+        """)
+        
         conn.commit()
         conn.close()
         logger.info(f"Database initialized: {cls.DB_FILE}")
@@ -254,4 +270,152 @@ class SQLiteStorage:
             logger.warning("All data cleared from database")
         except sqlite3.Error as e:
             logger.error(f"Error clearing data: {e}")
+            raise
+    
+    @classmethod
+    def delete_all_transactions(cls) -> None:
+        """Delete all transactions from database."""
+        try:
+            conn = cls._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM transactions")
+            conn.commit()
+            conn.close()
+            logger.warning("All transactions deleted from database")
+        except sqlite3.Error as e:
+            logger.error(f"Error deleting all transactions: {e}")
+            raise
+    
+    @classmethod
+    def delete_all_budgets(cls) -> None:
+        """Delete all budgets from database."""
+        try:
+            conn = cls._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM budgets")
+            conn.commit()
+            conn.close()
+            logger.warning("All budgets deleted from database")
+        except sqlite3.Error as e:
+            logger.error(f"Error deleting all budgets: {e}")
+            raise
+    
+    # ============ RECURRING TRANSACTIONS ============
+    
+    @classmethod
+    def load_recurring_transactions(cls) -> list:
+        """Load all recurring transactions from database."""
+        cls._initialize_database()
+        
+        recurring_list = []
+        try:
+            from models.recurring_transaction import RecurringTransaction
+            
+            conn = cls._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, name, type, category, amount, frequency, start_date, end_date, is_active, note
+                FROM recurring_transactions
+                ORDER BY name ASC
+            """)
+            
+            for row in cursor.fetchall():
+                recurring_data = {
+                    "id": row[0],
+                    "name": row[1],
+                    "type": row[2],
+                    "category": row[3],
+                    "amount": row[4],
+                    "frequency": row[5],
+                    "start_date": row[6],
+                    "end_date": row[7] or "",
+                    "is_active": bool(row[8]),
+                    "note": row[9] or ""
+                }
+                recurring_list.append(RecurringTransaction.from_dict(recurring_data))
+            
+            conn.close()
+            logger.info(f"Loaded {len(recurring_list)} recurring transactions from database")
+        except Exception as e:
+            logger.error(f"Error reading recurring transactions: {e}")
+            raise
+        
+        return recurring_list
+    
+    @classmethod
+    def save_recurring_transaction(cls, recurring) -> None:
+        """Save a recurring transaction to database."""
+        cls._initialize_database()
+        
+        try:
+            conn = cls._get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                INSERT INTO recurring_transactions 
+                (name, type, category, amount, frequency, start_date, end_date, is_active, note)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                recurring.name,
+                recurring.transaction_type,
+                recurring.category,
+                recurring.amount,
+                recurring.frequency,
+                recurring.start_date,
+                recurring.end_date,
+                1 if recurring.is_active else 0,
+                recurring.note
+            ))
+            
+            recurring.recurring_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            
+            logger.info(f"Saved recurring transaction ID: {recurring.recurring_id}")
+        except sqlite3.Error as e:
+            logger.error(f"Error saving recurring transaction: {e}")
+            raise
+    
+    @classmethod
+    def update_recurring_transaction(cls, recurring) -> None:
+        """Update an existing recurring transaction."""
+        try:
+            conn = cls._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE recurring_transactions 
+                SET name = ?, type = ?, category = ?, amount = ?, frequency = ?, 
+                    start_date = ?, end_date = ?, is_active = ?, note = ?
+                WHERE id = ?
+            """, (
+                recurring.name,
+                recurring.transaction_type,
+                recurring.category,
+                recurring.amount,
+                recurring.frequency,
+                recurring.start_date,
+                recurring.end_date,
+                1 if recurring.is_active else 0,
+                recurring.note,
+                recurring.recurring_id
+            ))
+            conn.commit()
+            conn.close()
+            logger.info(f"Updated recurring transaction ID: {recurring.recurring_id}")
+        except sqlite3.Error as e:
+            logger.error(f"Error updating recurring transaction: {e}")
+            raise
+    
+    @classmethod
+    def delete_recurring_transaction(cls, recurring_id: int) -> None:
+        """Delete a recurring transaction by ID."""
+        try:
+            conn = cls._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM recurring_transactions WHERE id = ?", (recurring_id,))
+            conn.commit()
+            conn.close()
+            logger.info(f"Deleted recurring transaction ID: {recurring_id}")
+        except sqlite3.Error as e:
+            logger.error(f"Error deleting recurring transaction: {e}")
             raise
