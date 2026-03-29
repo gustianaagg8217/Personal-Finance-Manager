@@ -135,26 +135,27 @@ class FinanceBot:
         welcome_text = (
             f"Halo {user.first_name}! 👋\n\n"
             "Selamat datang di Manajer Keuangan Pribadi Bot!\n\n"
-            "🏠 MENU UTAMA (12 Pilihan):\n\n"
+            "🏠 MENU UTAMA (13 Pilihan):\n\n"
             "1️⃣ /add_transaction - Tambah transaksi\n"
             "2️⃣ /summary - Lihat ringkasan\n"
             "3️⃣ /category_report - Laporan kategori\n"
             "4️⃣ /monthly_report - Laporan bulanan\n"
             "5️⃣ /charts - Grafik laporan\n"
             "6️⃣ /set_budget - Atur anggaran\n"
-            "7️⃣ /transactions - Kelola transaksi\n"
-            "8️⃣ /analytics - Analitik & kesehatan\n"
-            "9️⃣ /recurring - Transaksi berulang\n"
-            "🔟 /export - Ekspor data\n"
-            "1️⃣1️⃣ /settings - Pengaturan\n"
-            "1️⃣2️⃣ /help - Bantuan"
+            "7️⃣ /budget_status - Status anggaran\n"
+            "8️⃣ /transactions - Kelola transaksi\n"
+            "9️⃣ /analytics - Analitik & kesehatan\n"
+            "🔟 /recurring - Transaksi berulang\n"
+            "1️⃣1️⃣ /export - Ekspor data\n"
+            "1️⃣2️⃣ /settings - Pengaturan\n"
+            "1️⃣3️⃣ /help - Bantuan"
         )
         await update.message.reply_text(welcome_text)
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Help command handler."""
         help_text = (
-            "📚 BANTUAN - 12 MENU UTAMA\n\n"
+            "📚 BANTUAN - 13 MENU UTAMA\n\n"
             "💰 /add_transaction\n"
             "   Menambahkan transaksi pendapatan/pengeluaran\n\n"
             "📊 /summary\n"
@@ -1114,10 +1115,84 @@ class FinanceBot:
             )
             await query.message.reply_text(text)
             
+        elif query.data == "budget_status":
+            # Show budget status
+            await query.message.chat.send_action(ChatAction.TYPING)
+            
+            if not self.budget_service.budgets:
+                keyboard = [
+                    [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await query.message.reply_text("❌ Belum ada anggaran yang ditetapkan.", reply_markup=reply_markup)
+                return
+            
+            text = "✅ STATUS ANGGARAN BULAN INI\n\n"
+            
+            for category in sorted(self.budget_service.budgets.keys()):
+                status = self.budget_service.get_budget_status(category)
+                budget = status["budget"]
+                spending = status["spending"]
+                remaining = status["remaining"]
+                exceeded = status["exceeded"]
+                
+                if exceeded:
+                    symbol = "🔴 TERLAMPAUI"
+                    budget_text = f"[Budget: Rp{format_currency(budget)}]"
+                else:
+                    percentage = (spending / budget * 100) if budget > 0 else 0
+                    if percentage >= 80:
+                        symbol = "🟠 HAMPIR HABIS"
+                    elif percentage >= 50:
+                        symbol = "🟡 SEDANG"
+                    else:
+                        symbol = "🟢 AMAN"
+                    budget_text = f"[{percentage:.0f}%]"
+                
+                text += f"{symbol} {category}\n"
+                text += f"  💰 Pengeluaran: Rp{format_currency(spending)}\n"
+                text += f"  📊 Tersisa: Rp{format_currency(remaining)} {budget_text}\n\n"
+            
+            keyboard = [
+                [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(text, reply_markup=reply_markup)
+            
+        elif query.data == "set_budget":
+            # Show set budget options
+            await query.message.chat.send_action(ChatAction.TYPING)
+            keyboard = [
+                [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                "📋 Untuk mengatur anggaran, gunakan perintah:\n"
+                "/set_budget\n\n"
+                "Anda akan diminta memasukkan:\n"
+                "1. Total pendapatan bulanan\n"
+                "2. Alokasi anggaran per kategori\n\n"
+                "Atau menggunakan alokasi default (50-20-15-10-5)",
+                reply_markup=reply_markup
+            )
+            
+        elif query.data == "add_transaction":
+            # Show transaction type selection
+            keyboard = [
+                [InlineKeyboardButton("💰 Income", callback_data="add_transaction_income")],
+                [InlineKeyboardButton("💸 Expense", callback_data="add_transaction_expense")],
+                [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                "Pilih jenis transaksi:",
+                reply_markup=reply_markup
+            )
+            
         elif query.data == "main_menu":
             # Show main menu with all commands
             menu_text = (
-                "🏠 MENU UTAMA (12 PILIHAN)\n\n"
+                "🏠 MENU UTAMA (13 PILIHAN)\n\n"
                 "Silakan pilih perintah:\n\n"
                 "1. 💰 /add_transaction - Tambah transaksi\n"
                 "2. 📊 /summary - Lihat ringkasan\n"
@@ -1125,18 +1200,23 @@ class FinanceBot:
                 "4. 📅 /monthly_report - Laporan bulanan\n"
                 "5. 📊 /charts - Grafik laporan\n"
                 "6. 💳 /set_budget - Atur anggaran\n"
-                "7. 🔍 /transactions - Kelola transaksi\n"
-                "8. 💡 /analytics - Analitik & kesehatan\n"
-                "9. 📅 /recurring - Transaksi berulang\n"
-                "10. 📥 /export - Ekspor data\n"
-                "11. ⚙️ /settings - Pengaturan\n"
-                "12. ❓ /help - Bantuan"
+                "7. ✅ /budget_status - Status anggaran\n"
+                "8. 🔍 /transactions - Kelola transaksi\n"
+                "9. 💡 /analytics - Analitik & kesehatan\n"
+                "10. 📅 /recurring - Transaksi berulang\n"
+                "11. 📥 /export - Ekspor data\n"
+                "12. ⚙️ /settings - Pengaturan\n"
+                "13. ❓ /help - Bantuan"
             )
             
             keyboard = [
                 [
                     InlineKeyboardButton("Tambah Transaksi", callback_data="add_transaction"),
                     InlineKeyboardButton("Lihat Ringkasan", callback_data="show_summary"),
+                ],
+                [
+                    InlineKeyboardButton("Status Anggaran", callback_data="budget_status"),
+                    InlineKeyboardButton("Atur Anggaran", callback_data="set_budget"),
                 ]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1210,9 +1290,9 @@ class FinanceBot:
         # Add callback handler for add_transaction button from menu
         app.add_handler(CallbackQueryHandler(self.menu_add_transaction_entry, pattern="^add_transaction$"))
         
-        # Add menu callback handler for post-transaction buttons (show_summary and main_menu)
-        # Note: add_transaction is handled by the transaction conversation handler
-        app.add_handler(CallbackQueryHandler(self.menu_callback, pattern="^(show_summary|main_menu)$"))
+        # Add menu callback handler for menu buttons (show_summary, main_menu, budget_status, set_budget, and add_transaction from menu)
+        # Note: add_transaction is handled by the transaction conversation handler above
+        app.add_handler(CallbackQueryHandler(self.menu_callback, pattern="^(show_summary|main_menu|budget_status|set_budget|add_transaction_income|add_transaction_expense)$"))
         
         # Add error handler
         app.add_error_handler(self.error_handler)
