@@ -773,21 +773,31 @@ class FinanceBot:
         await query.answer()
         
         menu_text = (
-            "🏠 MENU UTAMA\n\n"
-            "Pilih perintah di bawah:\n\n"
-            "💰 /add_transaction - Tambah transaksi\n"
-            "📊 /summary - Lihat ringkasan\n"
-            "🏷️ /category_report - Laporan kategori\n"
-            "📅 /monthly_report - Laporan bulanan\n"
-            "💳 /set_budget - Atur anggaran\n"
-            "✅ /budget_status - Status anggaran\n"
-            "❓ /help - Bantuan"
+            "🏠 MENU UTAMA (13 PILIHAN)\n\n"
+            "Silakan pilih perintah:\n\n"
+            "1. 💰 /add_transaction - Tambah transaksi\n"
+            "2. 📊 /summary - Lihat ringkasan\n"
+            "3. 🏷️ /category_report - Laporan kategori\n"
+            "4. 📅 /monthly_report - Laporan bulanan\n"
+            "5. 📊 /charts - Grafik laporan\n"
+            "6. 💳 /set_budget - Atur anggaran\n"
+            "7. ✅ /budget_status - Status anggaran\n"
+            "8. 🔍 /transactions - Kelola transaksi\n"
+            "9. 💡 /analytics - Analitik & kesehatan\n"
+            "10. 📅 /recurring - Transaksi berulang\n"
+            "11. 📥 /export - Ekspor data\n"
+            "12. ⚙️ /settings - Pengaturan\n"
+            "13. ❓ /help - Bantuan"
         )
         
         keyboard = [
             [
                 InlineKeyboardButton("Tambah Transaksi", callback_data="add_transaction"),
                 InlineKeyboardButton("Lihat Ringkasan", callback_data="show_summary"),
+            ],
+            [
+                InlineKeyboardButton("Status Anggaran", callback_data="budget_status"),
+                InlineKeyboardButton("Atur Anggaran", callback_data="set_budget"),
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -798,21 +808,31 @@ class FinanceBot:
     async def show_main_menu_on_cancel(self, update: Update) -> int:
         """Show main menu when operation is cancelled."""
         menu_text = (
-            "🏠 MENU UTAMA\n\n"
-            "Pilih perintah di bawah:\n\n"
-            "💰 /add_transaction - Tambah transaksi\n"
-            "📊 /summary - Lihat ringkasan\n"
-            "🏷️ /category_report - Laporan kategori\n"
-            "📅 /monthly_report - Laporan bulanan\n"
-            "💳 /set_budget - Atur anggaran\n"
-            "✅ /budget_status - Status anggaran\n"
-            "❓ /help - Bantuan"
+            "🏠 MENU UTAMA (13 PILIHAN)\n\n"
+            "Silakan pilih perintah:\n\n"
+            "1. 💰 /add_transaction - Tambah transaksi\n"
+            "2. 📊 /summary - Lihat ringkasan\n"
+            "3. 🏷️ /category_report - Laporan kategori\n"
+            "4. 📅 /monthly_report - Laporan bulanan\n"
+            "5. 📊 /charts - Grafik laporan\n"
+            "6. 💳 /set_budget - Atur anggaran\n"
+            "7. ✅ /budget_status - Status anggaran\n"
+            "8. 🔍 /transactions - Kelola transaksi\n"
+            "9. 💡 /analytics - Analitik & kesehatan\n"
+            "10. 📅 /recurring - Transaksi berulang\n"
+            "11. 📥 /export - Ekspor data\n"
+            "12. ⚙️ /settings - Pengaturan\n"
+            "13. ❓ /help - Bantuan"
         )
         
         keyboard = [
             [
                 InlineKeyboardButton("Tambah Transaksi", callback_data="add_transaction"),
                 InlineKeyboardButton("Lihat Ringkasan", callback_data="show_summary"),
+            ],
+            [
+                InlineKeyboardButton("Status Anggaran", callback_data="budget_status"),
+                InlineKeyboardButton("Atur Anggaran", callback_data="set_budget"),
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
