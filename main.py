@@ -280,13 +280,168 @@ class FinanceManagerCLI:
         print("   • Data tersimpan otomatis di SQLite database")
         print("   • Integrasi dengan Telegram Bot untuk notifikasi\n")
     
+    def display_category_guidance(self) -> None:
+        """Display guidance for budget categories."""
+        while True:
+            self.clear_screen()
+            print("=" * 70)
+            print("🧾 PANDUAN KATEGORI BUDGET - BAGIAN 1")
+            print("=" * 70)
+            
+            print("\n🧾 1. KEBUTUHAN POKOK (Essential Needs) - 50%")
+            print("👉 Ini kategori survival — tanpa ini hidup langsung goyang\n")
+            
+            print("📋 Turunannya:")
+            print("🍚 Makanan & Minuman")
+            print("   • Belanja bulanan")
+            print("   • Makan harian (warung, kantin)\n")
+            
+            print("🏠 Tempat Tinggal")
+            print("   • Sewa rumah / kontrakan")
+            print("   • Cicilan KPR (kalau masuk kebutuhan, bukan investasi spekulatif)\n")
+            
+            print("💡 Tagihan Rumah")
+            print("   • Listrik")
+            print("   • Air")
+            print("   • Internet / WiFi\n")
+            
+            print("🚗 Transportasi")
+            print("   • BBM")
+            print("   • Ongkos (ojek, tol, parkir)")
+            print("   • Servis ringan kendaraan\n")
+            
+            print("📱 Komunikasi")
+            print("   • Pulsa")
+            print("   • Paket data\n")
+            
+            print("━" * 70)
+            print("\n💰 2. TABUNGAN / INVESTASI - 20%")
+            print("👉 Ini kategori masa depan & growth\n")
+            
+            print("📋 Turunannya:")
+            print("🏦 Tabungan")
+            print("   • Tabungan biasa\n")
+            
+            print("📈 Investasi")
+            print("   • Saham")
+            print("   • Crypto")
+            print("   • Reksadana")
+            print("   • Emas\n")
+            
+            print("💼 Pengembangan Diri")
+            print("   • Kursus")
+            print("   • Sertifikasi")
+            print("   • Buku (ini sering underrated)\n")
+            
+            print("🧠 Bisnis / Side Income")
+            print("   • Modal usaha")
+            print("   • Tools kerja (laptop, software)\n")
+            
+            print("💡 PRO TIP: Ini BUKAN sisa uang, tapi PRIORITAS!\n")
+            
+            choice = input("Lanjut ke halaman berikutnya? (y/n): ").strip().lower()
+            if choice in ['y', 'yes', '1']:
+                self.display_category_guidance_page2()
+            else:
+                break
+    
+    def display_category_guidance_page2(self) -> None:
+        """Display guidance for budget categories - Page 2."""
+        while True:
+            self.clear_screen()
+            print("=" * 70)
+            print("🎯 PANDUAN KATEGORI BUDGET - BAGIAN 2")
+            print("=" * 70)
+            
+            print("\n🎯 3. GAYA HIDUP (Lifestyle) - 15%")
+            print("👉 Ini kategori kenyamanan & kesenangan\n")
+            
+            print("📋 Turunannya:")
+            print("☕ Nongkrong & Kuliner")
+            print("   • Kafe, Restoran\n")
+            
+            print("🎬 Hiburan")
+            print("   • Bioskop")
+            print("   • Streaming (Netflix, dll)\n")
+            
+            print("🛍️ Belanja")
+            print("   • Fashion")
+            print("   • Gadget non-esensial\n")
+            
+            print("✈️ Liburan")
+            print("   • Staycation")
+            print("   • Traveling\n")
+            
+            print("🎮 Hobi")
+            print("   • Gaming")
+            print("   • Koleksi\n")
+            
+            print("⚠️ CATATAN KERAS: Ini yang paling sering bikin keuangan \"bocor halus\"\n")
+            
+            print("━" * 70)
+            print("\n💳 4. CICILAN / HUTANG - 10%")
+            print("👉 Ini kategori beban finansial\n")
+            
+            print("📋 Turunannya:")
+            print("🚗 Cicilan Kendaraan")
+            print("🏠 KPR (kalau dianggap kewajiban)")
+            print("💳 Kartu Kredit")
+            print("🏦 Pinjaman Bank")
+            print("📱 Paylater / Kredit Online\n")
+            
+            print("💡 INSIGHT PENTING: Ini kewajiban, bukan aset (kecuali menghasilkan uang)\n")
+            
+            choice = input("Lanjut ke halaman berikutnya? (y/n): ").strip().lower()
+            if choice in ['y', 'yes', '1']:
+                self.display_category_guidance_page3()
+            else:
+                break
+    
+    def display_category_guidance_page3(self) -> None:
+        """Display guidance for budget categories - Page 3."""
+        self.clear_screen()
+        print("=" * 70)
+        print("🛡️ PANDUAN KATEGORI BUDGET - BAGIAN 3 (FINAL)")
+        print("=" * 70)
+        
+        print("\n🛡️ 5. PROTEKSI (Protection) - 5%")
+        print("👉 Ini kategori defense system\n")
+        
+        print("📋 Turunannya:")
+        print("🏥 Asuransi Kesehatan")
+        print("💼 Asuransi Jiwa")
+        print("🚗 Asuransi Kendaraan")
+        print("🧾 BPJS")
+        print("� Dana Darurat")
+        print("   • Tabungan darurat")
+        print("   • Emergency fund\n")
+        print("�💊 Dana Kesehatan")
+        print("   • Obat")
+        print("   • Klinik")
+        print("   • Checkup\n")
+        
+        print("💡 MINDSET: Proteksi itu bukan pengeluaran, tapi \"anti bangkrut\"\n")
+        
+        print("━" * 70)
+        print("\n📊 RINGKASAN ALOKASI BUDGET (50-20-15-10-5):")
+        print("=" * 70)
+        print("🧾 1. Kebutuhan Pokok:      50%")
+        print("💰 2. Tabungan/Investasi:  20%")
+        print("🎯 3. Gaya Hidup:          15%")
+        print("💳 4. Cicilan/Hutang:      10%")
+        print("🛡️ 5. Proteksi:             5%")
+        print("=" * 70)
+        print("✅ TOTAL:                  100%")
+        print("=" * 70 + "\n")
+        
+        input("Tekan Enter untuk kembali...")
+    
     def display_menu(self) -> None:
         """Display main menu."""
         print("\n")
         print("=" * 50)
         print("MANAJER KEUANGAN PRIBADI")
         print("=" * 50)
-        print("0. Bantuan")
         print("1. Tambah Transaksi")
         print("2. Lihat Ringkasan")
         print("3. Laporan Kategori")
@@ -299,6 +454,7 @@ class FinanceManagerCLI:
         print("10. Ekspor Data")
         print("11. Pengaturan")
         print("12. Keluar")
+        print("0. Bantuan")
         print("=" * 50)
         
         # Display warnings at the bottom
@@ -358,8 +514,9 @@ class FinanceManagerCLI:
             print("\nPilih Jenis Transaksi:")
             print("  1. Income (Pendapatan)")
             print("  2. Expense (Pengeluaran)")
+            print("  3. Panduan")
             
-            type_choice = input("Pilih (1/2 atau 'batal'): ").strip()
+            type_choice = input("Pilih (1/2/3 atau 'batal'): ").strip()
             if is_cancel_command(type_choice):
                 raise CancelOperation()
             
@@ -369,8 +526,11 @@ class FinanceManagerCLI:
             elif type_choice == "2":
                 transaction_type = "expense"
                 break
+            elif type_choice == "3":
+                self.display_category_guidance()
+                continue
             else:
-                print("❌ Pilihan tidak valid. Masukkan 1 atau 2.")
+                print("❌ Pilihan tidak valid. Masukkan 1, 2, atau 3.")
         
         # Get category
         while True:
