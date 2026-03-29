@@ -105,6 +105,7 @@ class FinanceManagerCLI:
     def _initialize_menu_dispatcher(self) -> None:
         """Initialize menu action dispatcher."""
         self.menu_dispatcher: Dict[str, Callable] = {
+            "0": self.display_help,
             "1": self.input_transaction,
             "2": self.view_summary,
             "3": self.view_category_report,
@@ -241,12 +242,51 @@ class FinanceManagerCLI:
         logger.info("CLI closed")
         sys.exit(0)
     
+    def display_help(self) -> None:
+        """Display help information about menu options."""
+        print("\n" + "=" * 60)
+        print("📚 BANTUAN - PANDUAN MENU")
+        print("=" * 60)
+        print("\n0️⃣ BANTUAN")
+        print("   Menampilkan bantuan ini\n")
+        print("1️⃣ TAMBAH TRANSAKSI")
+        print("   Menambahkan transaksi pendapatan atau pengeluaran baru\n")
+        print("2️⃣ LIHAT RINGKASAN")
+        print("   Menampilkan ringkasan keuangan (total pendapatan, pengeluaran, saldo)\n")
+        print("3️⃣ LAPORAN KATEGORI")
+        print("   Menampilkan laporan pengeluaran berdasarkan kategori\n")
+        print("4️⃣ LAPORAN BULANAN")
+        print("   Menampilkan laporan bulanan untuk 6 bulan terakhir\n")
+        print("5️⃣ GRAFIK LAPORAN")
+        print("   Menampilkan grafik bulanan, tahunan, dan distribusi pengeluaran\n")
+        print("6️⃣ KELOLA ANGGARAN")
+        print("   Mengatur dan melihat status anggaran per kategori\n")
+        print("7️⃣ KELOLA TRANSAKSI")
+        print("   Edit, hapus, atau cari transaksi yang sudah ada\n")
+        print("8️⃣ ANALITIK & KESEHATAN")
+        print("   Melihat analisis kesehatan keuangan dan rekomendasi\n")
+        print("9️⃣ TRANSAKSI BERULANG")
+        print("   Mengelola transaksi yang berulang setiap bulan\n")
+        print("🔟 EKSPOR DATA")
+        print("   Mengekspor data transaksi ke format CSV atau TXT\n")
+        print("1️⃣1️⃣ PENGATURAN")
+        print("   Mengubah backend database, mengelola ID Telegram\n")
+        print("1️⃣2️⃣ KELUAR")
+        print("   Keluar dari aplikasi\n")
+        print("=" * 60)
+        print("\n💡 TIPS:")
+        print("   • Ketik nomor opsi untuk memilih menu")
+        print("   • Ketik 'batal', 'cancel', atau 'x' untuk membatalkan operasi")
+        print("   • Data tersimpan otomatis di SQLite database")
+        print("   • Integrasi dengan Telegram Bot untuk notifikasi\n")
+    
     def display_menu(self) -> None:
         """Display main menu."""
         print("\n")
         print("=" * 50)
         print("MANAJER KEUANGAN PRIBADI")
         print("=" * 50)
+        print("0. Bantuan")
         print("1. Tambah Transaksi")
         print("2. Lihat Ringkasan")
         print("3. Laporan Kategori")
@@ -315,12 +355,22 @@ class FinanceManagerCLI:
         
         # Get type
         while True:
-            transaction_type = input("Jenis transaksi (income/expense): ").strip()
-            if is_cancel_command(transaction_type):
+            print("\nPilih Jenis Transaksi:")
+            print("  1. Income (Pendapatan)")
+            print("  2. Expense (Pengeluaran)")
+            
+            type_choice = input("Pilih (1/2 atau 'batal'): ").strip()
+            if is_cancel_command(type_choice):
                 raise CancelOperation()
-            if validate_type(transaction_type):
+            
+            if type_choice == "1":
+                transaction_type = "income"
                 break
-            print("❌ Tipe tidak valid. Masukkan 'income' atau 'expense'.")
+            elif type_choice == "2":
+                transaction_type = "expense"
+                break
+            else:
+                print("❌ Pilihan tidak valid. Masukkan 1 atau 2.")
         
         # Get category
         while True:

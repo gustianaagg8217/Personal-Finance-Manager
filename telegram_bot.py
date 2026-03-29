@@ -185,9 +185,201 @@ class FinanceBot:
             "📌 Tips:\n"
             "• Database sama dengan CLI (SQLite)\n"
             "• Update real-time di kedua platform\n"
-            "• Fitur lengkap tersedia di aplikasi CLI"
+            "• Fitur lengkap tersedia di aplikasi CLI\n\n"
+            "📖 Untuk info kategori budget, ketik /categories"
         )
         await update.message.reply_text(help_text)
+    
+    async def categories_info(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show budget categories information."""
+        # Handle both command and callback query
+        is_callback = update.callback_query is not None
+        if is_callback:
+            await update.callback_query.answer()
+            await update.callback_query.message.chat.send_action(ChatAction.TYPING)
+        else:
+            await update.message.chat.send_action(ChatAction.TYPING)
+        
+        categories_text = (
+            "🧾 PANDUAN KATEGORI BUDGET\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "🧾 1. KEBUTUHAN POKOK (50%)\n"
+            "Survival category — tanpa ini hidup goyang\n\n"
+            "📋 Turunannya:\n"
+            "🍚 Makanan & Minuman\n"
+            "   • Belanja bulanan\n"
+            "   • Makan harian (warung, kantin)\n"
+            "🏠 Tempat Tinggal\n"
+            "   • Sewa rumah / kontrakan\n"
+            "   • Cicilan KPR\n"
+            "💡 Tagihan Rumah\n"
+            "   • Listrik, Air, Internet\n"
+            "🚗 Transportasi\n"
+            "   • BBM, Ongkos, Servis ringan\n"
+            "📱 Komunikasi\n"
+            "   • Pulsa, Paket data\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "💰 2. TABUNGAN / INVESTASI (20%)\n"
+            "Growth category — masa depan dimulai dari sini\n\n"
+            "📋 Turunannya:\n"
+            "🏦 Tabungan\n"
+            "   • Tabungan biasa\n"
+            "   • Dana darurat\n"
+            "📈 Investasi\n"
+            "   • Saham, Crypto, Reksadana, Emas\n"
+            "💼 Pengembangan Diri\n"
+            "   • Kursus, Sertifikasi, Buku\n"
+            "🧠 Bisnis / Side Income\n"
+            "   • Modal usaha, Tools kerja\n\n"
+            "💡 PRO TIP: Ini BUKAN sisa uang, tapi PRIORITAS!"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("Lanjut →", callback_data="categories_page_2")],
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        if is_callback:
+            try:
+                await update.callback_query.edit_message_text(text=categories_text, reply_markup=reply_markup)
+            except Exception:
+                await update.callback_query.message.reply_text(categories_text, reply_markup=reply_markup)
+        else:
+            await update.message.reply_text(categories_text, reply_markup=reply_markup)
+    
+    async def categories_info_page2(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show budget categories information page 2."""
+        query = update.callback_query
+        await query.answer()
+        await query.message.chat.send_action(ChatAction.TYPING)
+        
+        categories_text_p2 = (
+            "🎯 3. GAYA HIDUP (15%)\n"
+            "Kenyamanan & kesenangan — reward untuk kerja keras\n\n"
+            "📋 Turunannya:\n"
+            "☕ Nongkrong & Kuliner\n"
+            "   • Kafe, Restoran\n"
+            "🎬 Hiburan\n"
+            "   • Bioskop, Streaming, Gaming\n"
+            "🛍️ Belanja\n"
+            "   • Fashion, Gadget non-esensial\n"
+            "✈️ Liburan\n"
+            "   • Staycation, Traveling\n"
+            "🎮 Hobi\n"
+            "   • Koleksi, Interest lainnya\n\n"
+            "⚠️ CATATAN: Ini yang paling sering bikin keuangan \"bocor halus\"\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "💳 4. CICILAN / HUTANG (10%)\n"
+            "Beban finansial — kewajiban yang harus dibayar\n\n"
+            "📋 Turunannya:\n"
+            "🚗 Cicilan Kendaraan\n"
+            "🏠 KPR (jika dianggap kewajiban)\n"
+            "💳 Kartu Kredit\n"
+            "🏦 Pinjaman Bank\n"
+            "📱 Paylater / Kredit Online\n\n"
+            "💡 INSIGHT: Ini kewajiban, bukan aset (kecuali menghasilkan uang)"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("← Kembali", callback_data="categories_page_1")],
+            [InlineKeyboardButton("Lanjut →", callback_data="categories_page_3")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        try:
+            await query.edit_message_text(text=categories_text_p2, reply_markup=reply_markup)
+        except Exception:
+            await query.message.reply_text(categories_text_p2, reply_markup=reply_markup)
+    
+    async def categories_info_page3(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show budget categories information page 3."""
+        query = update.callback_query
+        await query.answer()
+        await query.message.chat.send_action(ChatAction.TYPING)
+        
+        categories_text_p3 = (
+            "🛡️ 5. PROTEKSI (5%)\n"
+            "Defense system — anti bangkrut\n\n"
+            "📋 Turunannya:\n"
+            "🏥 Asuransi Kesehatan\n"
+            "💼 Asuransi Jiwa\n"
+            "🚗 Asuransi Kendaraan\n"
+            "🧾 BPJS\n"
+            "💊 Dana Kesehatan\n"
+            "   • Obat, Klinik, Checkup\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📊 RINGKASAN ALOKASI:\n"
+            "🧾 Kebutuhan Pokok: 50%\n"
+            "💰 Tabungan/Investasi: 20%\n"
+            "🎯 Gaya Hidup: 15%\n"
+            "💳 Cicilan/Hutang: 10%\n"
+            "🛡️ Proteksi: 5%\n\n"
+            "✅ TOTAL: 100%\n\n"
+            "💡 MINDSET: Proteksi bukan pengeluaran, tapi \"anti bangkrut\""
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("← Kembali", callback_data="categories_page_2")],
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        try:
+            await query.edit_message_text(text=categories_text_p3, reply_markup=reply_markup)
+        except Exception:
+            await query.message.reply_text(categories_text_p3, reply_markup=reply_markup)
+    
+    async def categories_page1_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Callback handler for page 1 navigation."""
+        query = update.callback_query
+        await query.answer()
+        await query.message.chat.send_action(ChatAction.TYPING)
+        
+        categories_text = (
+            "🧾 PANDUAN KATEGORI BUDGET\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "🧾 1. KEBUTUHAN POKOK (50%)\n"
+            "Survival category — tanpa ini hidup goyang\n\n"
+            "📋 Turunannya:\n"
+            "🍚 Makanan & Minuman\n"
+            "   • Belanja bulanan\n"
+            "   • Makan harian (warung, kantin)\n"
+            "🏠 Tempat Tinggal\n"
+            "   • Sewa rumah / kontrakan\n"
+            "   • Cicilan KPR\n"
+            "💡 Tagihan Rumah\n"
+            "   • Listrik, Air, Internet\n"
+            "🚗 Transportasi\n"
+            "   • BBM, Ongkos, Servis ringan\n"
+            "📱 Komunikasi\n"
+            "   • Pulsa, Paket data\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "💰 2. TABUNGAN / INVESTASI (20%)\n"
+            "Growth category — masa depan dimulai dari sini\n\n"
+            "📋 Turunannya:\n"
+            "🏦 Tabungan\n"
+            "   • Tabungan biasa\n"
+            "   • Dana darurat\n"
+            "📈 Investasi\n"
+            "   • Saham, Crypto, Reksadana, Emas\n"
+            "💼 Pengembangan Diri\n"
+            "   • Kursus, Sertifikasi, Buku\n"
+            "🧠 Bisnis / Side Income\n"
+            "   • Modal usaha, Tools kerja\n\n"
+            "💡 PRO TIP: Ini BUKAN sisa uang, tapi PRIORITAS!"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("Lanjut →", callback_data="categories_page_2")],
+            [InlineKeyboardButton("Kembali ke Menu Utama", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        try:
+            await query.edit_message_text(text=categories_text, reply_markup=reply_markup)
+        except Exception:
+            await query.message.reply_text(categories_text, reply_markup=reply_markup)
     
     async def summary(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Show financial summary."""
@@ -1266,6 +1458,7 @@ class FinanceBot:
         app.add_handler(CommandHandler("recurring", self.manage_recurring_menu))
         app.add_handler(CommandHandler("export", self.export_data_menu))
         app.add_handler(CommandHandler("settings", self.settings_menu))
+        app.add_handler(CommandHandler("categories", self.categories_info))
         
         # Add transaction conversation handler
         add_transaction_handler = ConversationHandler(
@@ -1313,6 +1506,11 @@ class FinanceBot:
         # Add menu callback handler for menu buttons (show_summary, main_menu, budget_status, set_budget, and add_transaction from menu)
         # Note: add_transaction is handled by the transaction conversation handler above
         app.add_handler(CallbackQueryHandler(self.menu_callback, pattern="^(show_summary|main_menu|budget_status|set_budget|add_transaction_income|add_transaction_expense)$"))
+        
+        # Add categories pages callback handlers
+        app.add_handler(CallbackQueryHandler(self.categories_page1_callback, pattern="^categories_page_1$"))
+        app.add_handler(CallbackQueryHandler(self.categories_info_page2, pattern="^categories_page_2$"))
+        app.add_handler(CallbackQueryHandler(self.categories_info_page3, pattern="^categories_page_3$"))
         
         # Add error handler
         app.add_error_handler(self.error_handler)
